@@ -81,7 +81,9 @@ async function addLibrary() {
 
 
 function openEditDialog(lib) {
-  if (!isAdmin.value) return
+  if (!isAdmin.value) {
+    return
+  }
   libraryToEdit.id = lib.id
   libraryToEdit.name = lib.name || ''
   showEditDialog.value = true
@@ -107,7 +109,9 @@ async function updateLibrary() {
 
 
 function openDeleteDialog(lib) {
-  if (!isAdmin.value) return
+  if (!isAdmin.value) {
+    return
+  }
   libraryToDelete.id = lib.id
   libraryToDelete.name = lib.name || ''
   showDeleteDialog.value = true

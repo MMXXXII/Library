@@ -43,18 +43,40 @@ const filteredBooks = computed(() => {
 
 
 async function loadData() {
-  const [booksRes, statsRes, genresRes, libsRes] = await Promise.all([
-    axios.get('/books/'),
-    axios.get('/books/stats/'),
-    axios.get('/genres/'),
-    axios.get('/libraries/')
-  ])
-  books.value = booksRes.data.map(b => ({
-    ...b,
-    genre_name: b.genre_name || (b.genre?.name || ''),
-    library_name: b.library_name || (b.library?.name || ''),
-    status: b.is_available ? 'Доступна' : 'Выдана'
-  }))
+  const booksRes = await axios.get('/books/')
+  const statsRes = await axios.get('/books/stats/')
+  const genresRes = await axios.get('/genres/')
+  const libsRes = await axios.get('/libraries/')
+  
+  books.value = booksRes.data.map(b => {
+    let genreName = b.genre_name
+    if (!genreName && b.genre) {
+      genreName = b.genre.name
+    }
+    if (!genreName) {
+      genreName = ''
+    }
+    
+    let libraryName = b.library_name
+    if (!libraryName && b.library) {
+      libraryName = b.library.name
+    }
+    if (!libraryName) {
+      libraryName = ''
+    }
+    
+    let status = 'Выдана'
+    if (b.is_available) {
+      status = 'Доступна'
+    }
+    
+    b.genre_name = genreName
+    b.library_name = libraryName
+    b.status = status
+    
+    return b
+  })
+  
   bookStats.value = statsRes.data
   genres.value = genresRes.data
   libraries.value = libsRes.data

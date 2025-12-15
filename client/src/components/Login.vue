@@ -1,9 +1,10 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '../stores/userStore'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 
 const username = ref('')
@@ -23,8 +24,14 @@ const formattedOtpTime = computed(() => {
   return `${m < 10 ? '0' + m : m}:${s < 10 ? '0' + s : s}`;
 });
 
+onMounted(() => {
+  if (route.path === '/login' && userStore.isAuthenticated && userStore.isOtpVerified) {
+    router.push('/books')
+  }
+})
+
 function startOtpTimer() {
-  otpTimer.value = 300;
+  otpTimer.value = 30;
   timerInterval = setInterval(function() {
     otpTimer.value--;
 
@@ -69,7 +76,6 @@ async function handleOtpSubmit() {
     qrCodeImage.value = ''
     totpKey.value = ''
     router.push('/books')
-    window.location.reload()
   }
 }
 
