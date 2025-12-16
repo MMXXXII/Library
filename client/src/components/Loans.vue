@@ -215,7 +215,7 @@ async function updateLoan() {
     member: loanToEdit.member,
     loan_date: loanToEdit.loan_date
   };
-  await axios.put(`/loans/${loanToEdit.id}/`, data);
+  await axios.put('/loans/${loanToEdit.id}/', data);
   showEditDialog.value = false;
   await Promise.all([loadBooks(), loadLoans(), loadLoanStats()]);
 }
@@ -237,14 +237,14 @@ async function deleteLoan() {
   if (!isAdmin.value || !loanToDelete.id) {
     return;
   }
-  await axios.delete(`/loans/${loanToDelete.id}/`);
+  await axios.delete('/loans/${loanToDelete.id}/');
   showDeleteDialog.value = false;
   await Promise.all([loadBooks(), loadLoans(), loadLoanStats()]);
 }
 
 
 async function returnBook(loan) {
-  await axios.post(`/loans/${loan.id}/return/`);
+  await axios.post('/loans/${loan.id}/return/');
   await Promise.all([loadBooks(), loadLoans(), loadLoanStats()]);
 
 }

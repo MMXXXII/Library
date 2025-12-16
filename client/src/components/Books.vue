@@ -118,7 +118,7 @@ async function saveForm() {
     showNotification({ visible: true, message: 'Заполните все поля', type: 'warning' })
     return
   }
-  const url = form.id ? `/books/${form.id}/` : '/books/'
+  const url = form.id ? '/books/${form.id}/' : '/books/'
   const method = form.id ? axios.put : axios.post
   await method(url, { title: form.title, genre: form.genre, library: form.library })
   dialogs[form.id ? 'edit' : 'add'] = false
@@ -132,7 +132,7 @@ async function deleteBook() {
   if (!isAdmin.value) {
     return
   }
-  await axios.delete(`/books/${form.id}/`)
+  await axios.delete('/books/${form.id}/')
   dialogs.delete = false
   resetForm()
   await loadData()
@@ -150,7 +150,7 @@ async function exportFile(type) {
   const url = URL.createObjectURL(new Blob([res.data]))
   const a = document.createElement('a')
   a.href = url
-  a.download = `Books.${type === 'excel' ? 'xlsx' : 'docx'}`
+  a.download = "Books.${type === 'excel' ? 'xlsx' : 'docx'}"
   a.click()
   URL.revokeObjectURL(url)
 }

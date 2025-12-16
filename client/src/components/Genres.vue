@@ -85,29 +85,22 @@ async function saveForm() {
     return
   }
 
-  let url = '/genres/'
-  let method = axios.post
-
   if (form.id) {
-    url = `/genres/${form.id}/`
-    method = axios.put
+    await axios.put('/genres/${form.id}/', { name })
+  } else {
+    await axios.post('/genres/', { name })
   }
-
-  await method(url, { name })
 
   dialogs.edit = false
   dialogs.add = false
   resetForm()
   await loadData()
 
-  let message
   if (form.id) {
-    message = 'Сохранено'
+    showNotification({ visible: true, message: 'Сохранено', type: 'success' })
   } else {
-    message = 'Добавлено'
+    showNotification({ visible: true, message: 'Добавлено', type: 'success' })
   }
-
-  showNotification({ visible: true, message: message, type: 'success' })
 }
 
 
@@ -116,7 +109,7 @@ async function deleteGenre() {
     return
   }
 
-  await axios.delete(`/genres/${form.id}/`)
+  await axios.delete('/genres/${form.id}/')
   dialogs.delete = false
   resetForm()
   await loadData()
@@ -136,7 +129,7 @@ async function exportFile(type) {
   const url = URL.createObjectURL(new Blob([res.data]))
   const a = document.createElement('a')
   a.href = url
-  a.download = `genres.${type === 'excel' ? 'xlsx' : 'docx'}`
+  a.download = "genres.${type === 'excel' ? 'xlsx' : 'docx'}"
   a.click()
   URL.revokeObjectURL(url)
 }
