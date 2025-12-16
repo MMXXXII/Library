@@ -65,12 +65,17 @@ function applyFilter() {
 
 
 function getMemberName(id) {
-  const mem = members.value.find(m => m.id === id);
-  if (!mem) {
-    return currentMember.value.first_name || currentMember.value.username || 'Неизвестно';
+  const member =
+    members.value.find(m => m.id === id) ||
+    currentMember.value
+
+  if (!member) {
+    return 'Неизвестно'
   }
-  return mem.first_name || mem.username || 'Неизвестно';
+
+  return member.first_name || member.username || 'Неизвестно'
 }
+
 
 
 function getLibraryName(bookId) {
@@ -270,18 +275,6 @@ async function exportLoans(type = 'excel') {
 }
 
 
-const paginatedLoans = computed(() => {
-  const start = (page.value - 1) * itemsPerPage.value;
-  const end = start + itemsPerPage.value;
-  return filteredLoans.value.slice(start, end);
-});
-
-
-const totalPages = computed(() => {
-  return Math.ceil(filteredLoans.value.length / itemsPerPage.value);
-});
-
-
 onMounted(async () => {
   await userStore.fetchUserInfo()
   await Promise.all([loadLibraries(), loadBooks(), loadCurrentMember()])
@@ -298,92 +291,52 @@ onMounted(async () => {
         <v-card class="pa-4" elevation="2">
           <div class="d-flex justify-space-between align-center mb-4">
             <div>
-              <h2 class="mb-1">Выдачи</h2>
+              <h2>Выдачи</h2>
               <div class="text-body-2 text-medium-emphasis">
-                Количество: {{ loanStats?.count || 0 }},
-                читатель с максимальным количеством книг: {{ loanStats?.topReader?.name || 'не найден' }}
+                Количество: {{ loanStats?.count || 0 }}, читатель с максимальным количеством книг: {{ loanStats?.topReader?.name || 'не найден' }}
               </div>
             </div>
-            <div class="d-flex gap-2">
-              <v-btn v-if="isAdmin" color="primary" prepend-icon="mdi-plus" @click="showAddDialog = true">
-                Добавить выдачу
-              </v-btn>
-              <v-btn v-if="isAdmin" color="success" variant="outlined" prepend-icon="mdi-microsoft-excel" @click="exportLoans('excel')">Excel</v-btn>
-              <v-btn v-if="isAdmin" color="indigo" variant="outlined" prepend-icon="mdi-file-word" @click="exportLoans('word')">Word</v-btn>
+            <div class="d-flex gap-2" v-if="isAdmin">
+              <v-btn color="primary" prepend-icon="mdi-plus" @click="showAddDialog = true">Добавить выдачу</v-btn>
+              <v-btn color="success" variant="outlined" prepend-icon="mdi-microsoft-excel" @click="exportLoans('excel')">Excel</v-btn>
+              <v-btn color="indigo" variant="outlined" prepend-icon="mdi-file-word" @click="exportLoans('word')">Word</v-btn>
             </div>
           </div>
 
-          <v-alert v-if="notification.visible" :type="notification.type" class="mb-4" variant="tonal" closable>
-            {{ notification.message }}
-          </v-alert>
-
-          <v-row class="mb-4" align="center" no-gutters>
-            <v-col cols="12" md="6" class="pr-2">
-              <v-text-field v-model="searchQuery" label="Поиск по выдачам" variant="outlined"
-                density="comfortable" clearable prepend-inner-icon="mdi-magnify" @input="applyFilter" />
-            </v-col>
-            <v-col cols="12" md="6" class="pl-2">
-              <v-select v-model="sortOrder" :items="[
-                { title: 'От A до Я', value: 'asc' }, { title: 'От Я до A', value: 'desc' }
-              ]" item-title="title" item-value="value" label="Сортировка" variant="outlined" density="comfortable"
-                @update:model-value="applyFilter" />
-            </v-col>
-          </v-row>
-
-          <v-row v-if="!isAdmin" class="mb-4" align="end">
-            <v-col cols="4">
-              <v-select v-model="loanToAdd.library" :items="libraries" item-value="id" item-title="name" label="Библиотека"
-                variant="outlined" density="comfortable" hide-details @update:model-value="onLibraryChange" />
-            </v-col>
-            <v-col cols="4">
-              <v-select v-model="loanToAdd.book" :items="availableBooksToAdd()" item-value="id" item-title="title" label="Книга"
-                variant="outlined" density="comfortable" hide-details />
-            </v-col>
-            <v-col cols="2">
-              <v-text-field v-model="loanToAdd.loan_date" type="date" label="Дата выдачи" variant="outlined" density="comfortable"
-                hide-details />
-            </v-col>
-            <v-col cols="2" >
-            </v-col>
-          </v-row>
-
-          <v-list lines="two">
-            <v-list-item v-for="loan in paginatedLoans" :key="loan.id">
-              <template #default>
-                <div>
-                  <div class="font-weight-medium">
-                    {{ getBookTitle(loan.book) }} → {{ getMemberName(loan.member) }}
-                    <v-chip v-if="loan.return_date" color="success" variant="flat" size="x-small" class="ml-2">
-                      Возвращена {{ loan.return_date }}
-                    </v-chip>
-                    <v-chip v-else color="warning" variant="flat" size="x-small" class="ml-2">Выдана</v-chip>
-                  </div>
-                  <div class="text-body-2 text-medium-emphasis">Дата выдачи: {{ loan.loan_date }}</div>
-                  <div class="text-body-2 text-medium-emphasis">Библиотека: {{ getLibraryName(loan.book) }}</div>
-                </div>
-              </template>
-              <template #append>
-                <div class="d-flex gap-2">
-                  <v-btn v-if="!loan.return_date" size="small" variant="text" color="info" prepend-icon="mdi-keyboard-return"
-                    @click.stop="returnBook(loan)">
-                    Вернуть
-                  </v-btn>
-                  <v-btn v-if="isAdmin" icon size="small" variant="text" color="primary" @click.stop="openEditDialog(loan)">
-                    <v-icon icon="mdi-pencil" />
-                  </v-btn>
-                  <v-btn v-if="isAdmin" icon size="small" variant="text" color="error" @click.stop="openDeleteDialog(loan)">
-                    <v-icon icon="mdi-delete" />
-                  </v-btn>
-                </div>
-              </template>
-            </v-list-item>
-
-            <v-list-item v-if="!filteredLoans.length" title="Выдач пока нет" subtitle="Добавьте первую выдачу." />
-          </v-list>
-
-          <div v-if="totalPages > 1" class="d-flex justify-center mt-4">
-            <v-pagination v-model="page" :length="totalPages" :total-visible="7" />
+          <div class="d-flex align-center mb-4 gap-4">
+            <v-text-field v-model="searchQuery" label="Поиск по выдачам" variant="outlined" clearable prepend-inner-icon="mdi-magnify" density="comfortable" class="flex-grow-1" @input="applyFilter"/>
           </div>
+
+          <v-data-table
+            :headers="[
+              { title: 'Книга', key: 'book_title', sortable: true },
+              { title: 'Читатель', key: 'member_name', sortable: true },
+              { title: 'Библиотека', key: 'library_name', sortable: true },
+              { title: 'Дата выдачи', key: 'loan_date', sortable: true },
+              { title: 'Статус', key: 'status', sortable: true },
+              { title: 'Действия', key: 'actions', sortable: false }
+            ]"
+            :items="filteredLoans.map(l => ({ ...l, book_title: getBookTitle(l.book), member_name: getMemberName(l.member), library_name: getLibraryName(l.book), status: l.return_date ? 'Возвращена' : 'Выдана' }))"
+            item-key="id"
+            :items-per-page="10"
+            class="elevation-1">
+            <template #item.status="{ item }">
+              <v-chip :color="item.status === 'Возвращена' ? 'success' : 'warning'" variant="flat">{{ item.status }}</v-chip>
+            </template>
+            <template #item.actions="{ item }">
+              <div class="d-flex gap-1">
+                <v-btn v-if="!item.return_date" variant="text" color="info" prepend-icon="mdi-keyboard-return" size="small" @click="returnBook(item)"/>
+                <v-btn v-if="isAdmin" variant="text" color="primary" prepend-icon="mdi-pencil" size="small" @click="openEditDialog(item)"/>
+                <v-btn v-if="isAdmin" variant="text" color="error" prepend-icon="mdi-delete" size="small" @click="openDeleteDialog(item)"/>
+              </div>
+            </template>
+            <template #no-data>
+              <div class="text-center pa-6">
+                <div class="mb-2">Выдач нет</div>
+                <v-btn v-if="isAdmin" color="primary" prepend-icon="mdi-plus" @click="showAddDialog = true">Добавить выдачу</v-btn>
+              </div>
+            </template>
+          </v-data-table>
         </v-card>
       </v-col>
     </v-row>
@@ -392,13 +345,10 @@ onMounted(async () => {
       <v-card>
         <v-card-title>Добавить выдачу</v-card-title>
         <v-card-text>
-          <v-select v-model="loanToAdd.library" :items="libraries" item-value="id" item-title="name" label="Библиотека"
-            variant="outlined" density="comfortable" class="mb-3" @update:model-value="onLibraryChange" />
-          <v-select v-model="loanToAdd.book" :items="availableBooksToAdd()" item-value="id" item-title="title" label="Книга"
-            variant="outlined" density="comfortable" class="mb-3" />
-          <v-select v-model="loanToAdd.member" :items="members" item-value="id" item-title="first_name" label="Читатель"
-            variant="outlined" density="comfortable" class="mb-3" />
-          <v-text-field v-model="loanToAdd.loan_date" type="date" label="Дата выдачи" variant="outlined" density="comfortable" />
+          <v-select v-model="loanToAdd.library" :items="libraries" item-value="id" item-title="name" label="Библиотека" variant="outlined" density="comfortable" class="mb-3" @update:model-value="onLibraryChange"/>
+          <v-select v-model="loanToAdd.book" :items="availableBooksToAdd()" item-value="id" item-title="title" label="Книга" variant="outlined" density="comfortable" class="mb-3"/>
+          <v-select v-model="loanToAdd.member" :items="members" item-value="id" item-title="first_name" label="Читатель" variant="outlined" density="comfortable" class="mb-3"/>
+          <v-text-field v-model="loanToAdd.loan_date" type="date" label="Дата выдачи" variant="outlined" density="comfortable"/>
         </v-card-text>
         <v-card-actions class="justify-end">
           <v-btn variant="text" @click="showAddDialog = false">Отмена</v-btn>
@@ -407,17 +357,14 @@ onMounted(async () => {
       </v-card>
     </v-dialog>
 
-    <v-dialog v-if="isAdmin" v-model="showEditDialog" max-width="520">
+    <v-dialog v-model="showEditDialog" max-width="520" v-if="isAdmin">
       <v-card>
         <v-card-title>Редактировать выдачу</v-card-title>
         <v-card-text>
-          <v-select v-model="loanToEdit.library" :items="libraries" item-value="id" item-title="name" label="Библиотека"
-            variant="outlined" density="comfortable" class="mb-3" @update:model-value="onEditLibraryChange" />
-          <v-select v-model="loanToEdit.book" :items="availableBooksToEdit()" item-value="id" item-title="title" label="Книга"
-            variant="outlined" density="comfortable" class="mb-3" />
-          <v-select v-model="loanToEdit.member" :items="members" item-value="id" item-title="first_name" label="Читатель"
-            variant="outlined" density="comfortable" class="mb-3" />
-          <v-text-field v-model="loanToEdit.loan_date" type="date" label="Дата выдачи" variant="outlined" density="comfortable" />
+          <v-select v-model="loanToEdit.library" :items="libraries" item-value="id" item-title="name" label="Библиотека" variant="outlined" density="comfortable" class="mb-3" @update:model-value="onEditLibraryChange"/>
+          <v-select v-model="loanToEdit.book" :items="availableBooksToEdit()" item-value="id" item-title="title" label="Книга" variant="outlined" density="comfortable" class="mb-3"/>
+          <v-select v-model="loanToEdit.member" :items="members" item-value="id" item-title="first_name" label="Читатель" variant="outlined" density="comfortable" class="mb-3"/>
+          <v-text-field v-model="loanToEdit.loan_date" type="date" label="Дата выдачи" variant="outlined" density="comfortable"/>
         </v-card-text>
         <v-card-actions class="justify-end">
           <v-btn variant="text" @click="showEditDialog = false">Отмена</v-btn>
@@ -426,11 +373,11 @@ onMounted(async () => {
       </v-card>
     </v-dialog>
 
-    <v-dialog v-if="isAdmin" v-model="showDeleteDialog" max-width="420">
+    <v-dialog v-model="showDeleteDialog" max-width="420" v-if="isAdmin">
       <v-card>
-        <v-card-title class="text-h6">Удалить выдачу</v-card-title>
+        <v-card-title>Удалить выдачу</v-card-title>
         <v-card-text>
-          Вы уверены, что хотите удалить выдачу <strong>{{ loanToDelete.bookTitle }} → {{ loanToDelete.memberName }}</strong>?
+          Вы уверены, что хотите удалить <strong>{{ loanToDelete.bookTitle }} → {{ loanToDelete.memberName }}</strong>?
         </v-card-text>
         <v-card-actions class="justify-end">
           <v-btn variant="text" @click="showDeleteDialog = false">Отмена</v-btn>

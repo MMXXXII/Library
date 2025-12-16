@@ -36,9 +36,15 @@ const headers = [
 
 const filteredBooks = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
-  return !q ? books.value : books.value.filter(b =>
-    (b.title || '').toLowerCase().includes(q)
-  )
+  
+  if (!q) {
+    return books.value
+  }
+  
+  return books.value.filter(b => {
+    const title = b.title || ''
+    return title.toLowerCase().includes(q)
+  })
 })
 
 
@@ -118,13 +124,19 @@ async function saveForm() {
     showNotification({ visible: true, message: 'Заполните все поля', type: 'warning' })
     return
   }
-  const url = form.id ? '/books/${form.id}/' : '/books/'
-  const method = form.id ? axios.put : axios.post
-  await method(url, { title: form.title, genre: form.genre, library: form.library })
-  dialogs[form.id ? 'edit' : 'add'] = false
+  
+  if (form.id) {
+    await axios.put(`/books/${form.id}/`, { title: form.title, genre: form.genre, library: form.library })
+    dialogs.edit = false
+    showNotification({ visible: true, message: 'Сохранено', type: 'success' })
+  } else {
+    await axios.post('/books/', { title: form.title, genre: form.genre, library: form.library })
+    dialogs.add = false
+    showNotification({ visible: true, message: 'Добавлено', type: 'success' })
+  }
+  
   resetForm()
   await loadData()
-  showNotification({ visible: true, message: form.id ? 'Сохранено' : 'Добавлено', type: 'success' })
 }
 
 
