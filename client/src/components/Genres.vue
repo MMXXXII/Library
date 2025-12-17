@@ -86,7 +86,7 @@ async function saveForm() {
   }
 
   if (form.id) {
-    await axios.put('/genres/${form.id}/', { name })
+    await axios.put(`/genres/${form.id}/`, { name })
   } else {
     await axios.post('/genres/', { name })
   }
@@ -109,7 +109,7 @@ async function deleteGenre() {
     return
   }
 
-  await axios.delete('/genres/${form.id}/')
+  await axios.delete(`/genres/${form.id}/`)
   dialogs.delete = false
   resetForm()
   await loadData()
@@ -129,7 +129,7 @@ async function exportFile(type) {
   const url = URL.createObjectURL(new Blob([res.data]))
   const a = document.createElement('a')
   a.href = url
-  a.download = "genres.${type === 'excel' ? 'xlsx' : 'docx'}"
+  a.download = `genres.${type === 'excel' ? 'xlsx' : 'docx'}`
   a.click()
   URL.revokeObjectURL(url)
 }

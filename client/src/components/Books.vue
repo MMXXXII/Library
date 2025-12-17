@@ -144,7 +144,7 @@ async function deleteBook() {
   if (!isAdmin.value) {
     return
   }
-  await axios.delete('/books/${form.id}/')
+  await axios.delete(`/books/${form.id}/`)
   dialogs.delete = false
   resetForm()
   await loadData()
@@ -162,7 +162,7 @@ async function exportFile(type) {
   const url = URL.createObjectURL(new Blob([res.data]))
   const a = document.createElement('a')
   a.href = url
-  a.download = "Books.${type === 'excel' ? 'xlsx' : 'docx'}"
+  a.download = `Books.${type === 'excel' ? 'xlsx' : 'docx'}`;
   a.click()
   URL.revokeObjectURL(url)
 }

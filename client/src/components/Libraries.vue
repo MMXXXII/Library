@@ -100,7 +100,7 @@ async function updateLibrary() {
     return
   }
 
-  await axios.put('/libraries/${libraryToEdit.id}/', { name })
+  await axios.put(`/libraries/${libraryToEdit.id}/`, { name })
   showEditDialog.value = false
   await loadLibraries()
   await loadLibraryStats()
@@ -123,7 +123,7 @@ async function deleteLibrary() {
     return
   }
 
-  await axios.delete('/libraries/${libraryToDelete.id}/')
+  await axios.delete(`/libraries/${libraryToDelete.id}/`)
   showDeleteDialog.value = false
   await loadLibraries()
   await loadLibraryStats()
