@@ -8,7 +8,6 @@ export const useUserStore = defineStore('user', () => {
   const isOtpVerified = ref(false)
   const isSuperUser = ref(false)
   const loading = ref(false)
-  const error = ref(null)
   const pendingUsername = ref(null)
 
   function initializePending() {
@@ -20,7 +19,6 @@ export const useUserStore = defineStore('user', () => {
 
   async function login(usernameParam, passwordParam) {
     loading.value = true
-    error.value = null
 
     const response = await axios.post('/userprofile/login/', {
       username: usernameParam,
@@ -29,56 +27,42 @@ export const useUserStore = defineStore('user', () => {
 
     loading.value = false
 
-    if (response.data.is_authenticated === false && response.data.otp_sent) {
+    if (response.data.success) {
       user.value = {
         username: response.data.username,
         email: response.data.email,
-        is_superuser: response.data.is_superuser || false,
+        is_superuser: response.data.is_superuser,
       }
-      pendingUsername.value = usernameParam
-      sessionStorage.setItem('pending_username', usernameParam)
-      return response.data
-    } else {
-      error.value = response.data.error || 'Ошибка авторизации'
-      throw new Error(error.value)
+      isAuthenticated.value = true
+      isSuperUser.value = response.data.is_superuser
+      isOtpVerified.value = false
     }
   }
 
   async function verifyOtp(otpKey) {
-    loading.value = true
-    error.value = null
-
     const response = await axios.post('/userprofile/otp-login/', {
       key: otpKey,
-      username: pendingUsername.value,
     })
 
-    loading.value = false
-
-    if (response.data.success && response.data.is_authenticated) {
-      await fetchUserInfo()
-      pendingUsername.value = null
-      sessionStorage.removeItem('pending_username')
+    if (response.data.success) {
+      isOtpVerified.value = true
       return true
-    } else {
-      error.value = response.data.error || 'Неверный OTP код'
-      return false
     }
+
+    return false
+  }
+
+  async function getTotp() {
+    const response = await axios.get('/userprofile/totp-url/')
+    return response.data.url || ''
   }
 
   async function fetchUserInfo() {
-    const response = await axios.get('/userprofile/info/', { 
-      validateStatus: status => status < 500 
-    })
-    
-    if (response.status === 200) {
-      user.value = response.data
-      isAuthenticated.value = true
-      isSuperUser.value = response.data.is_superuser || false
-      isOtpVerified.value = true
-    } else {
-      resetAuthState()
-    }
+    const { data } = await axios.get('/userprofile/info/')
+    user.value = data
+    isAuthenticated.value = !!data.is_authenticated
+    isSuperUser.value = data.is_superuser
+    isOtpVerified.value = data.second_factor === true
   }
 
   async function checkOtpStatus() {
@@ -89,11 +73,7 @@ export const useUserStore = defineStore('user', () => {
 
   async function logout() {
     loading.value = true
-    
-    if (isAuthenticated.value) {
-      await axios.post('/userprofile/logout/')
-    }
-    
+    await axios.post('/userprofile/logout/')
     resetAuthState()
     sessionStorage.removeItem('pending_username')
     loading.value = false
@@ -105,7 +85,6 @@ export const useUserStore = defineStore('user', () => {
     isOtpVerified.value = false
     isSuperUser.value = false
     pendingUsername.value = null
-    error.value = null
   }
 
   return {
@@ -114,10 +93,7 @@ export const useUserStore = defineStore('user', () => {
     isOtpVerified,
     isSuperUser,
     loading,
-    error,
     pendingUsername,
-
-    
     initializePending,
     login,
     verifyOtp,
@@ -125,5 +101,6 @@ export const useUserStore = defineStore('user', () => {
     checkOtpStatus,
     logout,
     resetAuthState,
+    getTotp,
   }
 })

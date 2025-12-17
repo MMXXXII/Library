@@ -6,19 +6,12 @@ from django.contrib.auth.models import User
 class BookSerializer(serializers.ModelSerializer):
     genre_name = serializers.StringRelatedField(source='genre', read_only=True)
     library_name = serializers.StringRelatedField(source='library', read_only=True)
-    cover_url = serializers.SerializerMethodField()
     is_available = serializers.SerializerMethodField()
 
     class Meta:
         model = Book
-        fields = ['id', 'title', 'genre', 'library', 'genre_name', 'library_name', 'cover', 'cover_url', 'is_available']
+        fields = ['id', 'title', 'genre', 'library', 'genre_name', 'library_name', 'is_available']
         read_only_fields = ['user']
-
-    def get_cover_url(self, obj):
-        request = self.context.get('request')
-        if obj.cover:
-            return request.build_absolute_uri(obj.cover.url) if request else obj.cover.url
-        return None
 
     def get_is_available(self, obj):
         return obj.is_available()
@@ -60,12 +53,6 @@ class MemberSerializer(serializers.ModelSerializer):
         fields = ['id', 'user', 'user_name', 'library', 'library_name', 'first_name', 'photo', 'photo_url']
         read_only_fields = ['user']
 
-    def get_photo_url(self, obj):
-        request = self.context.get('request')
-        if obj.photo:
-            return request.build_absolute_uri(obj.photo.url) if request else obj.photo.url
-        return None
-
     def create(self, validated_data):
         request = self.context.get('request')
         if request and hasattr(request, 'user'):
@@ -97,12 +84,8 @@ class LoanSerializer(serializers.ModelSerializer):
         return super().update(instance, validated_data)
 
 
-class OTPSerializer(serializers.Serializer):
-    key = serializers.CharField()
-
-
 class UserSerializer(serializers.ModelSerializer):
-    age = serializers.IntegerField(source='profile.age', required=False, allow_null=True)
+    age = serializers.IntegerField(source='userprofile.age', required=False, allow_null=True)
 
     class Meta:
         model = User
@@ -110,7 +93,7 @@ class UserSerializer(serializers.ModelSerializer):
         read_only_fields = ['id']
 
     def update(self, instance, validated_data):
-        profile_data = validated_data.pop('profile', {})
+        profile_data = validated_data.pop('userprofile', {})
         age = profile_data.get('age')
 
         for attr, value in validated_data.items():

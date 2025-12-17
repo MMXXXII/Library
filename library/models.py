@@ -34,7 +34,6 @@ class Book(models.Model):
     title = models.TextField("Название книги")
     genre = models.ForeignKey(Genre, on_delete=models.CASCADE, verbose_name="Жанр")
     library = models.ForeignKey(Library, on_delete=models.CASCADE, verbose_name="Библиотека")
-    cover = models.ImageField("Обложка", upload_to="books", null=True, blank=True)
 
     class Meta:
         verbose_name = "Книга"

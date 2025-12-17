@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from "vue-router"
+import { useUserStore } from '../stores/userStore'
 import Genres from "../components/Genres.vue"
 import Libraries from "../components/Libraries.vue"
 import Books from "../components/Books.vue"
@@ -42,6 +43,7 @@ const router = createRouter({
     },
     { 
       path: "/login", 
+      name: "Login",
       component: Login 
     },
     { 
@@ -55,5 +57,24 @@ const router = createRouter({
     }
   ]
 })
+
+router.beforeEach(async (to) => {
+  const userStore = useUserStore()
+
+  if (!userStore.isAuthenticated) {
+    await userStore.fetchUserInfo()
+  }
+
+  if (to.path !== '/login' && !userStore.isAuthenticated) {
+    return { name: 'Login' }
+  }
+
+  if (to.path === '/login' && userStore.isAuthenticated) {
+    return '/books'
+  }
+
+  return true
+})
+
 
 export default router
