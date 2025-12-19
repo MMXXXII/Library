@@ -94,6 +94,7 @@ export const useUserStore = defineStore('user', () => {
     isSuperUser,
     loading,
     pendingUsername,
+    
     initializePending,
     login,
     verifyOtp,

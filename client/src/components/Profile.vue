@@ -52,7 +52,7 @@ async function handleLogout() {
               </v-list-item-content>
             </v-list-item>
 
-            <v-divider class="my-3"></v-divider>
+            <v-divider class="my-2"></v-divider>
 
             <v-list-item>
               <v-list-item-avatar>
@@ -76,18 +76,6 @@ async function handleLogout() {
             Выход
           </v-btn>
         </div>
-
-        <v-alert
-          v-else-if="userStore.error"
-          type="error"
-          dense
-          outlined
-          class="mt-5 mx-auto"
-          max-width="400"
-          rounded
-        >
-          {{ userStore.error }}
-        </v-alert>
       </v-card-text>
     </v-card>
   </v-container>

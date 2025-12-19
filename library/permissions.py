@@ -10,16 +10,13 @@ class IsSuperuserOrReadOnly(BasePermission):
         return bool(request.user.is_superuser)
 
 
-class OTPRequiredForDelete(BasePermission):
-    message = "Для удаления требуется двухфакторная аутентификация (2FA)."
+class OTPRequiredForSensitiveAction(BasePermission):
+    message = "Для этой операции требуется двухфакторная аутентификация (2FA)."
 
     def has_permission(self, request, view):
-        if request.method != "DELETE":
-            return True
-        if not request.user or not request.user.is_authenticated:
-            return False
-        if request.user.is_superuser:
-            second_factor = request.session.get("second_factor")
-            return bool(second_factor)
+        if request.method in SAFE_METHODS:
+            if not request.user.is_authenticated:
+                return False
+            if request.user.is_superuser:
+                return request.session.get("second_factor", False)
         return True
-

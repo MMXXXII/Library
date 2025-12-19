@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
 import axios from 'axios'
-import { showNotification, handleApiError } from '../utils'
+import { showNotification } from '../utils'
 import { useUserStore } from '../stores/userStore'
 
 

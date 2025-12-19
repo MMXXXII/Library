@@ -23,9 +23,6 @@ const searchQuery = ref('')
 const sortOrder = ref('asc')
 
 
-const notification = reactive({ visible: false, message: '', type: 'success' })
-
-
 const showAddDialog = ref(false)
 const showEditDialog = ref(false)
 const showDeleteDialog = ref(false)
