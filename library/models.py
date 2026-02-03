@@ -87,11 +87,6 @@ class UserProfile(models.Model):
     def __str__(self):
         return f'Профиль {self.user.username}'
 
-    def save(self, *args, **kwargs):
-        if self.id is None: 
-            self.totp_key = pyotp.random_base32()
-        super().save(*args, **kwargs)
-
 
     @receiver(post_save, sender=User)
     def create_user_profile(sender, instance, created, **kwargs):

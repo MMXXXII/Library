@@ -25,7 +25,7 @@ class GenreSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         request = self.context.get('request')
-        if request and hasattr(request, 'user'):
+        if request:
             validated_data['user'] = request.user
         return super().create(validated_data)
 
@@ -38,32 +38,33 @@ class LibrarySerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         request = self.context.get('request')
-        if request and hasattr(request, 'user'):
+        if request:
             validated_data['user'] = request.user
         return super().create(validated_data)
 
 
 class MemberSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user.username', read_only=True)
+    email = serializers.CharField(source='user.email', read_only=True)
+    is_superuser = serializers.BooleanField(source='user.is_superuser', read_only=True)
+    age = serializers.IntegerField(source='user.userprofile.age', read_only=True)
     library_name = serializers.CharField(source='library.name', read_only=True)
-    user_name = serializers.CharField(source='user.username', read_only=True)
-    photo_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Member
-        fields = ['id', 'user', 'user_name', 'library', 'library_name', 'first_name', 'photo', 'photo_url']
+        fields = ['id', 'username', 'email', 'is_superuser', 'age', 'library_name']
+
         read_only_fields = ['user']
 
     def create(self, validated_data):
         request = self.context.get('request')
-        if request and hasattr(request, 'user'):
+        if request:
             validated_data['user'] = request.user
         return super().create(validated_data)
 
     def update(self, instance, validated_data):
-        photo = validated_data.pop('photo', None)
-        if photo:
-            instance.photo = photo
         return super().update(instance, validated_data)
+
 
 
 class LoanSerializer(serializers.ModelSerializer):
@@ -74,14 +75,18 @@ class LoanSerializer(serializers.ModelSerializer):
         model = Loan
         fields = ['id', 'book', 'member', 'loan_date', 'return_date', 'book_title', 'member_name']
         read_only_fields = ['return_date']
+        extra_kwargs = {'member': {'required': False}}
 
     def create(self, validated_data):
         user = self.context['request'].user
         validated_data['user'] = user
+        if 'member' not in validated_data:
+            member = Member.objects.filter(user=user).first()
+            if member:
+                validated_data['member'] = member
+            else:
+                raise serializers.ValidationError({'member': 'Вы не зарегистрированы как читатель'})
         return super().create(validated_data)
-
-    def update(self, instance, validated_data):
-        return super().update(instance, validated_data)
 
 
 class UserSerializer(serializers.ModelSerializer):
@@ -96,8 +101,10 @@ class UserSerializer(serializers.ModelSerializer):
         profile_data = validated_data.pop('userprofile', {})
         age = profile_data.get('age')
 
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
+        instance.username = validated_data.get('username', instance.username)
+        instance.first_name = validated_data.get('first_name', instance.first_name)
+        instance.last_name = validated_data.get('last_name', instance.last_name)
+        instance.email = validated_data.get('email', instance.email)
         instance.save()
 
         if age is not None:

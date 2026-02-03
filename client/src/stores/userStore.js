@@ -39,36 +39,12 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  async function verifyOtp(otpKey) {
-    const response = await axios.post('/userprofile/otp-login/', {
-      key: otpKey,
-    })
-
-    if (response.data.success) {
-      isOtpVerified.value = true
-      return true
-    }
-
-    return false
-  }
-
-  async function getTotp() {
-    const response = await axios.get('/userprofile/totp-url/')
-    return response.data.url || ''
-  }
-
   async function fetchUserInfo() {
     const { data } = await axios.get('/userprofile/info/')
     user.value = data
     isAuthenticated.value = !!data.is_authenticated
     isSuperUser.value = data.is_superuser
     isOtpVerified.value = data.second_factor === true
-  }
-
-  async function checkOtpStatus() {
-    const response = await axios.get('/userprofile/otp-status/')
-    isOtpVerified.value = response.data.otp_good
-    return isOtpVerified.value
   }
 
   async function logout() {
@@ -90,18 +66,14 @@ export const useUserStore = defineStore('user', () => {
   return {
     user,
     isAuthenticated,
-    isOtpVerified,
+    login,
     isSuperUser,
     loading,
     pendingUsername,
     
     initializePending,
-    login,
-    verifyOtp,
+
     fetchUserInfo,
-    checkOtpStatus,
     logout,
-    resetAuthState,
-    getTotp,
   }
 })

@@ -1,37 +1,23 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
-import { showNotification } from '../utils'
 import { useUserStore } from '../stores/userStore'
-
 
 const userStore = useUserStore()
 const isAdmin = computed(() => userStore.isSuperUser)
+
 const genres = ref([])
 const genreStats = ref(null)
+
 const searchQuery = ref('')
-const sortOrder = ref('asc')
-
-
-const dialogs = reactive({ add: false, edit: false, delete: false })
-const form = reactive({ id: null, name: '' })
-
+const formId = ref(null)
+const formName = ref('')
 
 const filteredGenres = computed(() => {
-  let list = genres.value;
-  if (searchQuery.value) {
-    list = list.filter(g => g.name.toLowerCase().includes(searchQuery.value.toLowerCase()))
-  }
-
-  return list.sort((a, b) => {
-    if (sortOrder.value === 'asc') {
-      return a.name.localeCompare(b.name)
-    } else {
-      return b.name.localeCompare(a.name)
-    }
-  });
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return genres.value
+  return genres.value.filter(g => (g.name || '').toLowerCase().includes(q))
 })
-
 
 async function loadData() {
   const [genresRes, statsRes] = await Promise.all([
@@ -42,98 +28,55 @@ async function loadData() {
   genreStats.value = statsRes.data
 }
 
-
 function resetForm() {
-  form.id = null
-  form.name = ''
+  formId.value = null
+  formName.value = ''
 }
 
-
-function openEdit(genre) {
-  if (!isAdmin.value) {
-    return;
-  }
-  form.id = genre.id
-  form.name = genre.name || ''
-  dialogs.edit = true
+function editGenre(genre) {
+  if (!isAdmin.value) return
+  formId.value = genre.id
+  formName.value = genre.name
 }
-
-
-function openDelete(genre) {
-  if (!isAdmin.value) {
-    return;
-  }
-  form.id = genre.id
-  form.name = genre.name || ''
-  dialogs.delete = true
-}
-
-
-function openAdd() {
-  if (!isAdmin.value) {
-    return;
-  }
-  dialogs.add = true
-}
-
 
 async function saveForm() {
-  const name = form.name.trim()
+  if (!isAdmin.value || !formName.value) return
 
-  if (!name || !isAdmin.value) {
-    showNotification({ visible: true, message: 'Введите название жанра', type: 'warning' })
-    return
-  }
+  const payload = { name: formName.value }
 
-  if (form.id) {
-    await axios.put(`/genres/${form.id}/`, { name })
+  if (formId.value) {
+    await axios.put(`/genres/${formId.value}/`, payload)
   } else {
-    await axios.post('/genres/', { name })
+    await axios.post('/genres/', payload)
   }
 
-  dialogs.edit = false
-  dialogs.add = false
   resetForm()
   await loadData()
-
-  if (form.id) {
-    showNotification({ visible: true, message: 'Сохранено', type: 'success' })
-  } else {
-    showNotification({ visible: true, message: 'Добавлено', type: 'success' })
-  }
 }
 
+async function deleteGenre(genre) {
+  if (!isAdmin.value) return
+  if (!confirm(`Удалить жанр "${genre.name}"?`)) return
 
-async function deleteGenre() {
-  if (!isAdmin.value || !form.id) {
-    return
-  }
-
-  await axios.delete(`/genres/${form.id}/`)
-  dialogs.delete = false
-  resetForm()
+  await axios.delete(`/genres/${genre.id}/`)
   await loadData()
-  showNotification({ visible: true, message: 'Удалено', type: 'danger' })
 }
 
+async function exportFile() {
+  if (!isAdmin.value) return
 
-async function exportFile(type) {
-  if (!isAdmin.value) {
-    return
-  }
-
-  const res = await axios.get('/genres/export/', { 
-    params: { type }, 
-    responseType: 'blob' 
+  const res = await axios.get('/genres/export/', {
+    params: { type: 'excel' },
+    responseType: 'blob'
   })
+
   const url = URL.createObjectURL(new Blob([res.data]))
   const a = document.createElement('a')
   a.href = url
-  a.download = `genres.${type === 'excel' ? 'xlsx' : 'docx'}`
+  a.download = 'Genres.xlsx'
   a.click()
   URL.revokeObjectURL(url)
 }
-
 
 onMounted(async () => {
   await userStore.fetchUserInfo()
@@ -141,103 +84,48 @@ onMounted(async () => {
 })
 </script>
 
-
 <template>
-  <v-container fluid>
-    <v-row>
-      <v-col cols="12">
-        <v-card class="pa-4" elevation="2">
-          <div class="d-flex justify-space-between align-center mb-4">
-            <div>
-              <h2>Жанры</h2>
-              <div class="text-body-2 text-medium-emphasis">
-                Всего жанров: {{ genreStats?.count || 0 }},
-                самый популярный: {{ genreStats?.top || 'нет данных' }}
-              </div>
-            </div>
-            <div class="d-flex gap-2" v-if="isAdmin">
-              <v-btn color="primary" prepend-icon="mdi-plus" @click="openAdd">Добавить жанр</v-btn>
-              <v-btn @click="exportFile('excel')" color="success" variant="outlined" prepend-icon="mdi-microsoft-excel">
-                Excel
-              </v-btn>
-              <v-btn @click="exportFile('word')" color="indigo" variant="outlined" prepend-icon="mdi-file-word">
-                Word
-              </v-btn>
-            </div>
-          </div>
+  <div class="container mt-4">
+    <div class="row mb-3">
+      <div class="col">
+        <p>Всего: {{ genreStats?.count || 0 }}</p>
+        <p>Самый популярный: {{ genreStats?.top || 'нет данных' }}</p>
+      </div>
+      <div class="col-auto" v-if="isAdmin">
+        <button class="btn btn-outline-success" @click="exportFile">Экспорт Excel</button>
+      </div>
+    </div>
 
-          <v-row class="mb-4" align="center">
-            <v-col cols="12" md="6" class="pr-2">
-              <v-text-field v-model="searchQuery" label="Поиск по жанрам" variant="outlined" clearable 
-                prepend-inner-icon="mdi-magnify" density="comfortable" />
-            </v-col>
-            <v-col cols="12" md="6" class="pl-2">
-              <v-select v-model="sortOrder"
-                :items="[{ title: 'От A до Я', value: 'asc' }, { title: 'От Я до A', value: 'desc' }]"
-                item-title="title" item-value="value" label="Сортировка" variant="outlined" density="comfortable" />
-            </v-col>
-          </v-row>
+    <div v-if="isAdmin" class="row g-2 mb-3">
+      <div class="col">
+        <input type="text" class="form-control" placeholder="Название жанра" v-model="formName">
+      </div>
+      <div class="col-auto">
+        <button class="btn btn-primary" @click="saveForm">{{ formId ? 'Сохранить' : 'Добавить' }}</button>
+      </div>
+    </div>
 
-          <v-list lines="one">
-            <v-list-item v-for="genre in filteredGenres" :key="genre.id" :title="genre.name">
-              <template #append>
-                <div v-if="isAdmin" class="d-flex gap-2">
-                  <v-btn icon size="small" variant="text" color="primary" @click.stop="openEdit(genre)">
-                    <v-icon icon="mdi-pencil" />
-                  </v-btn>
-                  <v-btn icon size="small" variant="text" color="error" @click.stop="openDelete(genre)">
-                    <v-icon icon="mdi-delete" />
-                  </v-btn>
-                </div>
-              </template>
-            </v-list-item>
-            <v-list-item v-if="!filteredGenres.length" title="Жанров пока нет"
-              subtitle="Добавьте первый жанр, чтобы начать." />
-          </v-list>
-        </v-card>
-      </v-col>
-    </v-row>
+    <div class="row mb-3">
+      <div class="col">
+        <input type="text" class="form-control" placeholder="Поиск" v-model="searchQuery">
+      </div>
+    </div>
 
-    <v-dialog v-model="dialogs.add" max-width="420" v-if="isAdmin">
-      <v-card>
-        <v-card-title>Добавить жанр</v-card-title>
-        <v-card-text>
-          <v-text-field v-model="form.name" label="Название жанра" variant="outlined" density="comfortable" />
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn @click="dialogs.add = false">Отмена</v-btn>
-          <v-btn color="primary" @click="saveForm">Добавить</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <v-dialog v-model="dialogs.edit" max-width="420" v-if="isAdmin">
-      <v-card>
-        <v-card-title>Редактировать жанр</v-card-title>
-        <v-card-text>
-          <v-text-field v-model="form.name" label="Название жанра" variant="outlined" density="comfortable" />
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn @click="dialogs.edit = false">Отмена</v-btn>
-          <v-btn color="primary" @click="saveForm">Сохранить</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-
-    <v-dialog v-model="dialogs.delete" max-width="420" v-if="isAdmin">
-      <v-card>
-        <v-card-title>Удалить жанр</v-card-title>
-        <v-card-text>
-          Вы уверены, что хотите удалить жанр <strong>{{ form.name }}</strong>?
-        </v-card-text>
-        <v-card-actions>
-          <v-spacer />
-          <v-btn @click="dialogs.delete = false">Отмена</v-btn>
-          <v-btn color="error" @click="deleteGenre">Удалить</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
-  </v-container>
+    <ul class="list-group">
+      <li v-for="genre in filteredGenres" :key="genre.id" class="list-group-item d-flex justify-content-between align-items-center">
+        <div>{{ genre.name }}</div>
+        <div v-if="isAdmin" class="d-flex gap-2">
+          <button class="btn btn-success btn-sm" @click="editGenre(genre)">
+            <i class="bi bi-pen-fill"></i>
+          </button>
+          <button class="btn btn-danger btn-sm" @click="deleteGenre(genre)">
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+      </li>
+      <li v-if="!filteredGenres.length" class="list-group-item text-center text-muted">
+        Жанров пока нет
+      </li>
+    </ul>
+  </div>
 </template>
