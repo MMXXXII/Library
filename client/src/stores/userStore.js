@@ -5,7 +5,6 @@ import axios from 'axios'
 export const useUserStore = defineStore('user', () => {
   const user = ref(null)
   const isAuthenticated = ref(false)
-  const isOtpVerified = ref(false)
   const isSuperUser = ref(false)
   const loading = ref(false)
   const pendingUsername = ref(null)
@@ -35,16 +34,15 @@ export const useUserStore = defineStore('user', () => {
       }
       isAuthenticated.value = true
       isSuperUser.value = response.data.is_superuser
-      isOtpVerified.value = false
     }
   }
 
   async function fetchUserInfo() {
+    await axios.get('/userprofile/csrf/')
     const { data } = await axios.get('/userprofile/info/')
     user.value = data
     isAuthenticated.value = !!data.is_authenticated
     isSuperUser.value = data.is_superuser
-    isOtpVerified.value = data.second_factor === true
   }
 
   async function logout() {
@@ -58,7 +56,6 @@ export const useUserStore = defineStore('user', () => {
   function resetAuthState() {
     user.value = null
     isAuthenticated.value = false
-    isOtpVerified.value = false
     isSuperUser.value = false
     pendingUsername.value = null
   }

@@ -1,14 +1,14 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { useRouter, useRoute } from 'vue-router'
+import { useRouter } from 'vue-router'
 import { useUserStore } from '../stores/userStore'
 
 const router = useRouter()
-const route = useRoute()
 const userStore = useUserStore()
 
 const username = ref('')
 const password = ref('')
+const error = ref('')
 
 onMounted(async () => {
   await userStore.fetchUserInfo()
@@ -18,59 +18,53 @@ onMounted(async () => {
 })
 
 async function handleLogin() {
+  error.value = ''
   await userStore.login(username.value, password.value)
   if (userStore.isAuthenticated) {
     router.replace('/books')
+  } else {
+    error.value = 'Неверный логин или пароль'
   }
-}
-
-async function handleLogout() {
-  await userStore.logout()
-  router.replace('/login')
 }
 </script>
 
 <template>
-  <v-container>
-    <v-card max-width="400" class="mx-auto my-10">
-      <v-card-title>Вход в систему</v-card-title>
-      <v-card-text>
-        <v-form @submit.prevent="handleLogin">
-          <v-text-field
+  <div class="d-flex justify-content-center align-items-center vh-100">
+    <div class="card p-4" style="width: 360px;">
+      <h5 class="card-title mb-3 text-center">Вход в систему</h5>
+      <form @submit.prevent="handleLogin">
+        <div class="mb-3">
+          <label for="username" class="form-label">Имя пользователя</label>
+          <input
+            id="username"
+            type="text"
+            class="form-control"
             v-model="username"
-            label="Имя пользователя"
+            required
             autocomplete="username"
-            required
-          ></v-text-field>
-
-          <v-text-field
-            v-model="password"
-            label="Пароль"
-            type="password"
-            autocomplete="current-password"
-            required
-          ></v-text-field>
-
-          <v-btn
-            type="submit"
-            :loading="userStore.loading"
-            :disabled="userStore.loading"
-            block
           >
-            {{ userStore.loading ? 'Загрузка...' : 'Войти' }}
-          </v-btn>
-        </v-form>
+        </div>
 
-        <v-alert
-          v-if="userStore.error"
-          type="error"
-          dense
-          text
-          class="mt-4"
-        >
-          {{ userStore.error }}
-        </v-alert>
-      </v-card-text>
-    </v-card>
-  </v-container>
+        <div class="mb-3">
+          <label for="password" class="form-label">Пароль</label>
+          <input
+            id="password"
+            type="password"
+            class="form-control"
+            v-model="password"
+            required
+            autocomplete="current-password"
+          >
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">
+          Войти
+        </button>
+
+        <div v-if="error" class="alert alert-danger mt-3" role="alert">
+          {{ error }}
+        </div>
+      </form>
+    </div>
+  </div>
 </template>

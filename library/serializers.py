@@ -52,7 +52,7 @@ class MemberSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Member
-        fields = ['id', 'username', 'email', 'is_superuser', 'age', 'library_name']
+        fields = ['id', 'username', 'email', 'is_superuser', 'age', 'library', 'library_name']
 
         read_only_fields = ['user']
 

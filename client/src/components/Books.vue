@@ -1,16 +1,14 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { useUserStore } from '../stores/userStore'
 
 const userStore = useUserStore()
-const isAdmin = computed(() => userStore.isSuperUser)
 
 const books = ref([])
 const genres = ref([])
 const libraries = ref([])
 const bookStats = ref(null)
-
 const searchQuery = ref('')
 const formId = ref(null)
 const formTitle = ref('')
@@ -18,28 +16,35 @@ const formGenre = ref('')
 const formLibrary = ref('')
 const formFile = ref(null)
 
-const filteredBooks = computed(() => {
+function getFilteredBooks() {
   const q = searchQuery.value.trim().toLowerCase()
   if (!q) return books.value
-  return books.value.filter(b => (b.title || '').toLowerCase().includes(q))
-})
+  const out = []
+  for (let i = 0; i < books.value.length; i++) {
+    const b = books.value[i]
+    const title = b.title || ''
+    if (title.toLowerCase().indexOf(q) !== -1) out.push(b)
+  }
+  return out
+}
 
 async function loadData() {
-  const [booksRes, statsRes, genresRes, libsRes] = await Promise.all([
-    axios.get('/books/'),
-    axios.get('/books/stats/'),
-    axios.get('/genres/'),
-    axios.get('/libraries/')
-  ])
-
-  books.value = booksRes.data.map(b => ({
-    ...b,
-    genre_name: b.genre_name || b.genre?.name || '',
-    library_name: b.library_name || b.library?.name || '',
-    status: b.is_available ? 'Доступна' : 'Выдана'
-  }))
+  const booksRes = await axios.get('/books/')
+  const arr = []
+  for (let i = 0; i < booksRes.data.length; i++) {
+    const b = booksRes.data[i]
+    const item = { ...b }
+    item.genre_name = b.genre_name || (b.genre && b.genre.name) || ''
+    item.library_name = b.library_name || (b.library && b.library.name) || ''
+    item.status = b.is_available ? 'Доступна' : 'Выдана'
+    arr.push(item)
+  }
+  books.value = arr
+  const statsRes = await axios.get('/books/stats/')
   bookStats.value = statsRes.data
+  const genresRes = await axios.get('/genres/')
   genres.value = genresRes.data
+  const libsRes = await axios.get('/libraries/')
   libraries.value = libsRes.data
 }
 
@@ -51,43 +56,36 @@ function resetForm() {
   formFile.value = null
 }
 
+function onFileChange(e) {
+  formFile.value = e.target.files[0]
+}
+
 function editBook(book) {
   formId.value = book.id
   formTitle.value = book.title
-  formGenre.value = book.genre?.id || book.genre
-  formLibrary.value = book.library?.id || book.library
+  formGenre.value = (book.genre && book.genre.id) || book.genre
+  formLibrary.value = (book.library && book.library.id) || book.library
 }
 
 async function saveForm() {
   if (!formTitle.value || !formGenre.value || !formLibrary.value) return
-
-  const payload = {
-    title: formTitle.value,
-    genre: formGenre.value,
-    library: formLibrary.value
-  }
-
+  const payload = { title: formTitle.value, genre: formGenre.value, library: formLibrary.value }
   if (formId.value) {
-    await axios.put(`/books/${formId.value}/`, payload)
+    await axios.put('/books/' + formId.value + '/', payload)
   } else {
     await axios.post('/books/', payload)
   }
-
   resetForm()
   await loadData()
 }
 
 async function deleteBook(book) {
-  if (!confirm(`Удалить ${book.title}?`)) return
-  await axios.delete(`/books/${book.id}/`)
+  await axios.delete('/books/' + book.id + '/')
   await loadData()
 }
 
 async function exportFile() {
-  const res = await axios.get('/books/export/', {
-    params: { type: 'excel' },
-    responseType: 'blob'
-  })
+  const res = await axios.get('/books/export/', { params: { type: 'excel' }, responseType: 'blob' })
   const url = URL.createObjectURL(res.data)
   const a = document.createElement('a')
   a.href = url
@@ -107,18 +105,17 @@ onMounted(async () => {
 
     <div class="row mb-3">
       <div class="col">
-        <p>Всего книг: {{ bookStats?.count || 0 }}</p>
-        <p>Самая популярная: {{ bookStats?.most_borrowed?.title || 'нет данных' }}</p>
+        <p>Всего книг: {{ bookStats ? bookStats.count : 0 }}</p>
+        <p>Самая популярная: {{ bookStats && bookStats.most_borrowed ? bookStats.most_borrowed.title : 'нет данных' }}</p>
       </div>
       <div class="col-auto">
         <button class="btn btn-outline-success" @click="exportFile">Экспорт Excel</button>
       </div>
     </div>
 
-
-    <div v-if="isAdmin" class="row g-2 mb-3">
+    <div v-if="userStore.isSuperUser" class="row g-2 mb-3">
       <div class="col">
-        <input type="text" class="form-control" placeholder="Название книги" v-model="formTitle">
+        <input class="form-control" placeholder="Название книги" v-model="formTitle">
       </div>
       <div class="col">
         <select class="form-select" v-model="formGenre">
@@ -133,41 +130,33 @@ onMounted(async () => {
         </select>
       </div>
       <div class="col">
-        <input type="file" class="form-control" @change="e => formFile.value = e.target.files[0]">
+        <input type="file" class="form-control" @change="onFileChange">
       </div>
       <div class="col-auto">
         <button class="btn btn-primary" @click="saveForm">{{ formId ? 'Сохранить' : 'Добавить' }}</button>
       </div>
     </div>
 
-
     <div class="row mb-3">
       <div class="col">
-        <input type="text" class="form-control" placeholder="Поиск по названию" v-model="searchQuery">
+        <input class="form-control" placeholder="Поиск по названию" v-model="searchQuery">
       </div>
     </div>
 
-
     <ul class="list-group">
-      <li v-for="book in filteredBooks" :key="book.id" class="list-group-item d-flex justify-content-between align-items-center">
+      <li v-for="book in getFilteredBooks()" :key="book.id" class="list-group-item d-flex justify-content-between align-items-center">
         <div>
           <div>{{ book.title }}</div>
           <div class="text-muted small">
             Жанр: {{ book.genre_name }} | Библиотека: {{ book.library_name }} | Статус: {{ book.status }}
           </div>
         </div>
-        <div v-if="isAdmin" class="d-flex gap-2">
-          <button class="btn btn-success btn-sm" @click="editBook(book)">
-            <i class="bi bi-pen-fill"></i>
-          </button>
-          <button class="btn btn-danger btn-sm" @click="deleteBook(book)">
-            <i class="bi bi-x"></i>
-          </button>
+        <div v-if="userStore.isSuperUser" class="d-flex gap-2">
+          <button class="btn btn-success btn-sm" @click="editBook(book)"><i class="bi bi-pen-fill"></i></button>
+          <button class="btn btn-danger btn-sm" @click="deleteBook(book)"><i class="bi bi-x"></i></button>
         </div>
       </li>
-      <li v-if="!filteredBooks.length" class="list-group-item text-center text-muted">
-        Книг пока нет
-      </li>
+      <li v-if="getFilteredBooks().length === 0" class="list-group-item text-center text-muted">Книг пока нет</li>
     </ul>
 
   </div>

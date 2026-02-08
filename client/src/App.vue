@@ -6,7 +6,7 @@ import { useUserStore } from './stores/userStore'
 const router = useRouter()
 const userStore = useUserStore()
 
-const handleLogout = async () => {
+async function handleLogout() {
   await userStore.logout()
   router.push('/login')
 }
@@ -18,36 +18,29 @@ onMounted(() => {
 </script>
 
 <template>
-  <v-app>
-    <v-app-bar app color="white" elevation="2">
-      <v-btn v-if="userStore.isAuthenticated" color="primary" variant="text" to="/genres">Жанры</v-btn>
-      <v-btn v-if="userStore.isAuthenticated" color="primary" variant="text" to="/libraries">Библиотеки</v-btn>
-      <v-btn v-if="userStore.isAuthenticated" color="primary" variant="text" to="/books">Книги</v-btn>
-      <v-btn v-if="userStore.isAuthenticated && userStore.isSuperUser" color="primary" variant="text" to="/members">Читатели</v-btn>
-      <v-btn v-if="userStore.isAuthenticated" color="primary" variant="text" to="/loans">Выдачи</v-btn>
+  <div class="container mt-3 mb-3 d-flex align-items-center gap-2 flex-wrap">
 
-      <v-spacer></v-spacer>
+    <button v-if="userStore.isAuthenticated" type="button" class="btn btn-light" @click="$router.push('/genres')">Жанры</button>
+    <button v-if="userStore.isAuthenticated" type="button" class="btn btn-light" @click="$router.push('/libraries')">Библиотеки</button>
+    <button v-if="userStore.isAuthenticated" type="button" class="btn btn-light" @click="$router.push('/books')">Книги</button>
+    <button v-if="userStore.isAuthenticated && userStore.isSuperUser" type="button" class="btn btn-light" @click="$router.push('/members')">Читатели</button>
+    <button v-if="userStore.isAuthenticated" type="button" class="btn btn-light" @click="$router.push('/loans')">Выдачи</button>
 
-      <v-menu v-if="userStore.isAuthenticated" activator="#profile-menu-btn" location="bottom end">
-        <template #activator="{ props }">
-          <v-btn color="secondary" variant="text" v-bind="props" id="profile-menu-btn">
-            {{ userStore.user?.username || 'Профиль' }}
-            <v-icon end>mdi-menu-down</v-icon>
-          </v-btn>
-        </template>
-        <v-list>
-          <v-list-item to="/profile" title="Мой профиль" />
-          <v-divider />
-          <v-list-item @click="handleLogout" class="text-danger" title="Выход" />
-        </v-list>
-      </v-menu>
+    <div class="ms-auto d-flex gap-2 align-items-center">
+      <div class="dropdown" v-if="userStore.isAuthenticated">
+        <button class="btn btn-secondary dropdown-toggle" type="button" id="profileDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+          {{ userStore.user && userStore.user.username ? userStore.user.username : 'Профиль' }}
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="profileDropdown">
+          <li><a class="dropdown-item" @click="$router.push('/profile')">Мой профиль</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item text-danger" @click="handleLogout">Выход</a></li>
+        </ul>
+      </div>
 
-      <v-btn v-if="userStore.isAuthenticated" href="/admin" target="_blank" color="primary" variant="text">Админка</v-btn>
-    </v-app-bar>
+      <button v-if="userStore.isAuthenticated" type="button" class="btn btn-light" @click="window.open('/admin', '_blank')">Админка</button>
+    </div>
+  </div>
 
-    <v-main>
-      <router-view />
-    </v-main>
-  </v-app>
+  <router-view />
 </template>
-

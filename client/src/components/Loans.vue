@@ -1,10 +1,9 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import axios from 'axios'
 import { useUserStore } from '../stores/userStore'
 
 const userStore = useUserStore()
-const isAdmin = computed(() => userStore.isSuperUser)
 
 const loans = ref([])
 const books = ref([])
@@ -19,43 +18,64 @@ const formBook = ref(null)
 const formMember = ref(null)
 const formLoanDate = ref('')
 
-function getBookTitle(id) { return books.value.find(b => b.id === id)?.title || '' }
-function getMemberName(id) { return members.value.find(m => m.id === id)?.username || 'Неизвестно' }
-function getLibraryName(bookId) { const b = books.value.find(b => b.id === bookId); return libraries.value.find(l => l.id === b?.library)?.name || '' }
-
-function formatLoans(raw) {
-  return raw.map(l => ({
-    ...l,
-    book_title: getBookTitle(l.book),
-    member_name: getMemberName(l.member),
-    library_name: getLibraryName(l.book),
-    status: l.return_date ? 'Возвращена' : 'Выдана'
-  }))
-}
-
-const filteredLoans = computed(() => {
-  const q = searchQuery.value.toLowerCase()
-  return loans.value.filter(l => l.book_title.toLowerCase().includes(q) || l.member_name.toLowerCase().includes(q))
+const loansWithDetails = computed(() => {
+  return loans.value.map(loan => {
+    const book = books.value.find(b => b.id === loan.book)
+    const member = members.value.find(m => m.id === loan.member)
+    const library = book ? libraries.value.find(l => l.id === book.library) : null
+    
+    return {
+      ...loan,
+      book_title: book ? book.title : '',
+      member_name: member ? member.username : 'Неизвестно',
+      library_name: library ? library.name : '',
+      status: loan.return_date ? 'Возвращена' : 'Выдана'
+    }
+  })
 })
 
-function availableBooks() { return books.value.filter(b => b.is_available && (!formLibrary.value || b.library === formLibrary.value)) }
+const filteredLoans = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase()
+  if (!q) return loansWithDetails.value
+  return loansWithDetails.value.filter(loan => {
+    return loan.book_title.toLowerCase().includes(q) || 
+           loan.member_name.toLowerCase().includes(q)
+  })
+})
 
-function resetForm() { formId.value = null; formLibrary.value = null; formBook.value = null; formMember.value = null; formLoanDate.value = '' }
+const availableBooks = computed(() => {
+  return books.value.filter(b => {
+    if (!b.is_available) return false
+    if (formLibrary.value && b.library !== formLibrary.value) return false
+    return true
+  })
+})
+
+function resetForm() {
+  formId.value = null
+  formLibrary.value = null
+  formBook.value = null
+  formMember.value = null
+  formLoanDate.value = ''
+}
 
 async function loadData() {
-  books.value = (await axios.get('/books/')).data
-  members.value = (await axios.get('/members/')).data
-  libraries.value = (await axios.get('/libraries/')).data
+  const booksRes = await axios.get('/books/')
+  books.value = booksRes.data
+  const membersRes = await axios.get('/members/')
+  members.value = membersRes.data
+  const librariesRes = await axios.get('/libraries/')
+  libraries.value = librariesRes.data
   const loansRes = await axios.get('/loans/')
-  loans.value = formatLoans(loansRes.data)
-  loanStats.value = (await axios.get('/loans/stats/')).data
+  loans.value = loansRes.data
+  const statsRes = await axios.get('/loans/stats/')
+  loanStats.value = statsRes.data
 }
 
 function openEdit(loan) {
-  if (!isAdmin.value) return
   const book = books.value.find(b => b.id === loan.book)
   formId.value = loan.id
-  formLibrary.value = book?.library || null
+  formLibrary.value = book ? book.library : null
   formBook.value = loan.book
   formMember.value = loan.member
   formLoanDate.value = loan.loan_date
@@ -64,16 +84,17 @@ function openEdit(loan) {
 async function saveForm() {
   if (!formBook.value || !formLoanDate.value) return
   const data = { book: formBook.value, loan_date: formLoanDate.value }
-  if (isAdmin.value && formMember.value) data.member = formMember.value
-  if (formId.value) await axios.put('/loans/' + formId.value + '/', data)
-  else await axios.post('/loans/', data)
+  if (formMember.value) data.member = formMember.value
+  if (formId.value) {
+    await axios.put('/loans/' + formId.value + '/', data)
+  } else {
+    await axios.post('/loans/', data)
+  }
   resetForm()
   await loadData()
 }
 
 async function deleteLoan(loan) {
-  if (!isAdmin.value) return
-  if (!confirm(`Удалить выдачу "${getBookTitle(loan.book)}" для ${getMemberName(loan.member)}?`)) return
   await axios.delete('/loans/' + loan.id + '/')
   await loadData()
 }
@@ -84,14 +105,13 @@ async function returnBook(loan) {
 }
 
 async function exportLoans() {
-  if (!isAdmin.value) return
-  const res = await axios.get('/loans/export/', { params: { type: 'excel' }, responseType: 'blob' })
-  const url = window.URL.createObjectURL(new Blob([res.data]))
+  const res = await axios.get('/loans/export/', { responseType: 'blob' })
+  const url = URL.createObjectURL(res.data)
   const a = document.createElement('a')
   a.href = url
-  a.download = 'loans.xlsx'
+  a.download = 'Loans.xlsx'
   a.click()
-  window.URL.revokeObjectURL(url)
+  URL.revokeObjectURL(url)
 }
 
 onMounted(async () => {
@@ -105,15 +125,15 @@ onMounted(async () => {
 
     <div class="row mb-3">
       <div class="col">
-        <p>Всего выдач: {{ loanStats?.count || 0 }}</p>
-        <p>Читатель с максимальным количеством книг: {{ loanStats?.topReader?.name || 'не найден' }}</p>
+        <p>Всего выдач: {{ loanStats ? loanStats.count : 0 }}</p>
+        <p>Читатель с максимальным количеством книг: {{ loanStats && loanStats.topReader ? loanStats.topReader.name : 'не найден' }}</p>
       </div>
       <div class="col-auto">
         <button class="btn btn-outline-success" @click="exportLoans">Экспорт Excel</button>
       </div>
     </div>
 
-    <div v-if="isAdmin" class="row g-2 mb-3">
+    <div v-if="userStore.isSuperUser" class="row g-2 mb-3">
       <div class="col">
         <select class="form-select" v-model="formLibrary" @change="formBook = null">
           <option value="">Библиотека</option>
@@ -123,7 +143,7 @@ onMounted(async () => {
       <div class="col">
         <select class="form-select" v-model="formBook">
           <option value="">Книга</option>
-          <option v-for="b in availableBooks()" :key="b.id" :value="b.id">{{ b.title }}</option>
+          <option v-for="b in availableBooks" :key="b.id" :value="b.id">{{ b.title }}</option>
         </select>
       </div>
       <div class="col">
@@ -160,19 +180,18 @@ onMounted(async () => {
           <button v-if="!loan.return_date" class="btn btn-warning btn-sm" @click="returnBook(loan)">
             <i class="bi bi-arrow-return-left"></i>
           </button>
-          <button class="btn btn-success btn-sm" v-if="isAdmin" @click="openEdit(loan)">
+          <button class="btn btn-success btn-sm" v-if="userStore.isSuperUser" @click="openEdit(loan)">
             <i class="bi bi-pen-fill"></i>
           </button>
-          <button class="btn btn-danger btn-sm" v-if="isAdmin" @click="deleteLoan(loan)">
+          <button class="btn btn-danger btn-sm" v-if="userStore.isSuperUser" @click="deleteLoan(loan)">
             <i class="bi bi-x"></i>
           </button>
         </div>
       </li>
-      <li v-if="!filteredLoans.length" class="list-group-item text-center text-muted">
+      <li v-if="filteredLoans.length === 0" class="list-group-item text-center text-muted">
         Выдач пока нет
       </li>
     </ul>
-
 
   </div>
 </template>

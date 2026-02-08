@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useUserStore } from '../stores/userStore'
 
@@ -9,14 +9,20 @@ const userStore = useUserStore()
 
 const username = ref('')
 const password = ref('')
+const error = ref('')
 
 onMounted(async () => {
   await userStore.fetchUserInfo()
 })
 
 async function handleLogin() {
+  error.value = ''
   await userStore.login(username.value, password.value)
-  router.replace('/books')
+  if (userStore.isAuthenticated) {
+    router.replace('/books')
+  } else {
+    error.value = 'Неверный логин или пароль'
+  }
 }
 
 async function handleLogout() {
@@ -26,65 +32,55 @@ async function handleLogout() {
 </script>
 
 <template>
-  <v-container v-if="$route.path === '/profile'">
-    <v-card>
-      <v-card-title>Профиль пользователя</v-card-title>
-      <v-card-text>
-        <v-progress-linear v-if="userStore.loading" indeterminate></v-progress-linear>
+  <div class="container mt-5">
+    <div v-if="route.path === '/profile'">
+      <div class="card mx-auto" style="max-width: 400px;">
+        <div class="card-header">Профиль пользователя</div>
+        <div class="card-body">
+          <div v-if="userStore.loading" class="mb-3">
+            <div class="progress">
+              <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 100%"></div>
+            </div>
+          </div>
 
-        <div v-else-if="userStore.user">
-          <v-list>
-            <v-list-item>
-              <v-list-item-content>
-                <v-list-item-title>Имя пользователя: {{ userStore.user.username }}</v-list-item-title>
-              </v-list-item-content>
-            </v-list-item>
-            <v-list-item>
-              <v-list-item-content>
-                <v-list-item-title>Email: {{ userStore.user.email }}</v-list-item-title>
-              </v-list-item-content>
-            </v-list-item>
-          </v-list>
-          <v-btn @click="handleLogout">Выход</v-btn>
+          <div v-else-if="userStore.user">
+            <p><strong>Имя пользователя:</strong> {{ userStore.user.username }}</p>
+            <p><strong>Email:</strong> {{ userStore.user.email }}</p>
+            <button class="btn btn-danger" @click="handleLogout">Выход</button>
+          </div>
+
+          <div v-else-if="userStore.error" class="alert alert-danger">
+            {{ userStore.error }}
+          </div>
         </div>
+      </div>
+    </div>
 
-        <v-alert v-else-if="userStore.error">
-          {{ userStore.error }}
-        </v-alert>
-      </v-card-text>
-    </v-card>
-  </v-container>
+    <div v-else>
+      <div class="card mx-auto" style="max-width: 400px;">
+        <div class="card-header">Вход в систему</div>
+        <div class="card-body">
+          <form @submit.prevent="handleLogin">
+            <div class="mb-3">
+              <label for="username" class="form-label">Имя пользователя</label>
+              <input type="text" id="username" class="form-control" v-model="username" required autocomplete="username">
+            </div>
 
-  <v-container v-else>
-    <v-card>
-      <v-form @submit.prevent="handleLogin">
-        <v-text-field
-          label="Имя пользователя"
-          v-model="username"
-          required
-          autocomplete="username"
-        ></v-text-field>
+            <div class="mb-3">
+              <label for="password" class="form-label">Пароль</label>
+              <input type="password" id="password" class="form-control" v-model="password" required autocomplete="current-password">
+            </div>
 
-        <v-text-field
-          label="Пароль"
-          v-model="password"
-          required
-          type="password"
-          autocomplete="current-password"
-        ></v-text-field>
+            <button type="submit" class="btn btn-primary w-100" :disabled="userStore.loading">
+              {{ userStore.loading ? 'Загрузка...' : 'Войти' }}
+            </button>
 
-        <v-btn 
-          type="submit" 
-          :loading="userStore.loading" 
-          :disabled="userStore.loading"
-        >
-          Войти
-        </v-btn>
-
-        <v-alert v-if="userStore.error">
-          {{ userStore.error }}
-        </v-alert>
-      </v-form>
-    </v-card>
-  </v-container>
+            <div v-if="error" class="alert alert-danger mt-3">
+              {{ error }}
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
