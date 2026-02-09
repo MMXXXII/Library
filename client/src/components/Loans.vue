@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted } from 'vue'
 import axios from 'axios'
 import { useUserStore } from '../stores/userStore'
 
@@ -18,8 +18,8 @@ const formBook = ref(null)
 const formMember = ref(null)
 const formLoanDate = ref('')
 
-const loansWithDetails = computed(() => {
-  return loans.value.map(loan => {
+function getFilteredLoans() {
+  const loansWithDetails = loans.value.map(loan => {
     const book = books.value.find(b => b.id === loan.book)
     const member = members.value.find(m => m.id === loan.member)
     const library = book ? libraries.value.find(l => l.id === book.library) : null
@@ -32,24 +32,22 @@ const loansWithDetails = computed(() => {
       status: loan.return_date ? 'Возвращена' : 'Выдана'
     }
   })
-})
-
-const filteredLoans = computed(() => {
+  
   const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return loansWithDetails.value
-  return loansWithDetails.value.filter(loan => {
+  if (!q) return loansWithDetails
+  return loansWithDetails.filter(loan => {
     return loan.book_title.toLowerCase().includes(q) || 
            loan.member_name.toLowerCase().includes(q)
   })
-})
+}
 
-const availableBooks = computed(() => {
+function getAvailableBooks() {
   return books.value.filter(b => {
     if (!b.is_available) return false
     if (formLibrary.value && b.library !== formLibrary.value) return false
     return true
   })
-})
+}
 
 function resetForm() {
   formId.value = null
@@ -143,7 +141,7 @@ onMounted(async () => {
       <div class="col">
         <select class="form-select" v-model="formBook">
           <option value="">Книга</option>
-          <option v-for="b in availableBooks" :key="b.id" :value="b.id">{{ b.title }}</option>
+          <option v-for="b in getAvailableBooks()" :key="b.id" :value="b.id">{{ b.title }}</option>
         </select>
       </div>
       <div class="col">
@@ -167,7 +165,7 @@ onMounted(async () => {
     </div>
 
     <ul class="list-group">
-      <li v-for="loan in filteredLoans" :key="loan.id"
+      <li v-for="loan in getFilteredLoans()" :key="loan.id"
         class="list-group-item d-flex justify-content-between align-items-center">
         <div>
           <div>{{ loan.book_title }}</div>
@@ -188,7 +186,7 @@ onMounted(async () => {
           </button>
         </div>
       </li>
-      <li v-if="filteredLoans.length === 0" class="list-group-item text-center text-muted">
+      <li v-if="getFilteredLoans().length === 0" class="list-group-item text-center text-muted">
         Выдач пока нет
       </li>
     </ul>

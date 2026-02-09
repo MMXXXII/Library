@@ -4,7 +4,6 @@ from django.contrib.auth import authenticate, login, logout as django_logout
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
-from django.db.models import Count
 from openpyxl import Workbook
 from rest_framework import permissions, serializers
 from rest_framework.decorators import action
@@ -32,7 +31,12 @@ class UserProfileViewSet(GenericViewSet):
     @action(detail=False, url_path="info", methods=["GET"])
     def info(self, request, *args, **kwargs):
         user = request.user
-        result = {"id": user.id, "username": "", "is_authenticated": user.is_authenticated, "is_superuser": False}
+        result = {
+            "id": user.id,
+            "username": "",
+            "is_authenticated": user.is_authenticated,
+            "is_superuser": False
+        }
         if user.is_authenticated:
             result["username"] = user.username
             result["is_superuser"] = user.is_superuser
@@ -42,12 +46,20 @@ class UserProfileViewSet(GenericViewSet):
     def login_first_factor(self, request, *args, **kwargs):
         serializer = LoginSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        user = authenticate(username=serializer.validated_data["username"], password=serializer.validated_data["password"])
-        if user is None:
+        username = serializer.validated_data["username"]
+        password = serializer.validated_data["password"]
+        user = authenticate(username=username, password=password)
+        if user is None or not user.is_authenticated:
             return Response({"success": False, "is_authenticated": False})
         login(request, user)
         UserProfile.objects.get_or_create(user=user)
-        return Response({"success": True, "is_authenticated": True, "username": user.username, "email": user.email, "is_superuser": user.is_superuser})
+        return Response({
+            "success": True,
+            "is_authenticated": True,
+            "username": user.username,
+            "email": user.email,
+            "is_superuser": user.is_superuser
+        })
 
     @action(detail=False, url_path="logout", methods=["POST"], permission_classes=[IsAuthenticated])
     def logout(self, request, *args, **kwargs):
@@ -61,12 +73,16 @@ def export_data(data, columns, filename):
     ws.title = filename
     ws.append(columns)
     for row in data:
-        ws.append([row.get(col, "") for col in columns])
+        row_list = []
+        for col in columns:
+            row_list.append(row.get(col, ""))
+        ws.append(row_list)
     buffer = io.BytesIO()
     wb.save(buffer)
     buffer.seek(0)
-    response = HttpResponse(buffer.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-    response["Content-Disposition"] = f'attachment; filename="{filename}.xlsx"'
+    content = buffer.getvalue()
+    response = HttpResponse(content, content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    response["Content-Disposition"] = 'attachment; filename="' + filename + '.xlsx"'
     return response
 
 
@@ -77,12 +93,30 @@ class GenreViewSet(ModelViewSet):
 
     @action(detail=False, methods=["GET"])
     def stats(self, request):
-        top = Genre.objects.annotate(c=Count("book")).order_by("-c").first()
-        return Response({"count": self.get_queryset().count(), "top": top.name if top else None})
+        genres = Genre.objects.all()
+
+        top = None
+        max_books = 0
+
+        for g in genres:
+            books_count = Book.objects.filter(genre=g).count()
+            if books_count > max_books:
+                max_books = books_count
+                top = g
+
+        return Response({
+            "count": genres.count(),
+            "top": top.name if top else None
+        })
 
     @action(detail=False, methods=["GET"])
     def export(self, request):
-        data = [{"ID": g.id, "Name": g.name, "User": g.user.username if g.user else ""} for g in self.get_queryset()]
+        data = []
+        for g in self.get_queryset():
+            user_name = ""
+            if g.user:
+                user_name = g.user.username
+            data.append({"ID": g.id, "Name": g.name, "User": user_name})
         return export_data(data, ["ID", "Name", "User"], "Genres")
 
 
@@ -93,12 +127,31 @@ class LibraryViewSet(ModelViewSet):
 
     @action(detail=False, methods=["GET"])
     def stats(self, request):
-        top = Library.objects.annotate(c=Count("book__loan")).order_by("-c").first()
-        return Response({"count": self.get_queryset().count(), "top": top.name if top else None})
+        libraries = Library.objects.all()
+
+        top = None
+        max_loans = 0
+
+        for lib in libraries:
+            loans = Loan.objects.filter(book__library=lib).count()
+            if loans > max_loans:
+                max_loans = loans
+                top = lib
+
+        return Response({
+            "count": libraries.count(),
+            "top": top.name if top else None
+        })
+
 
     @action(detail=False, methods=["GET"])
     def export(self, request):
-        data = [{"ID": l.id, "Name": l.name, "User": l.user.username if l.user else ""} for l in self.get_queryset()]
+        data = []
+        for l in self.get_queryset():
+            user_name = ""
+            if l.user:
+                user_name = l.user.username
+            data.append({"ID": l.id, "Name": l.name, "User": user_name})
         return export_data(data, ["ID", "Name", "User"], "Libraries")
 
 
@@ -109,15 +162,47 @@ class BookViewSet(ModelViewSet):
 
     @action(detail=False, methods=["GET"])
     def stats(self, request):
-        most = Loan.objects.values("book__id", "book__title").annotate(c=Count("book")).order_by("-c").first()
-        return Response({"count": self.get_queryset().count(), "most_borrowed": most})
+        books = Book.objects.all()
+
+        top = None
+        max_loans = 0
+
+        for b in books:
+            loans = Loan.objects.filter(book=b).count()
+            if loans > max_loans:
+                max_loans = loans
+                top = b
+
+        return Response({
+            "count": books.count(),
+            "most_borrowed": {
+                "id": top.id,
+                "title": top.title,
+                "count": max_loans
+            } if top else None
+        })
+
 
     @action(detail=False, methods=["GET"])
     def export(self, request):
         data = []
         for b in self.get_queryset():
-            data.append({"ID": b.id, "Title": b.title, "Genre": b.genre.name if b.genre else "", 
-                        "Library": b.library.name if b.library else "", "Status": "Borrowed" if not b.is_available else "Available"})
+            genre_name = ""
+            if b.genre:
+                genre_name = b.genre.name
+            library_name = ""
+            if b.library:
+                library_name = b.library.name
+            status = "Available"
+            if not b.is_available:
+                status = "Borrowed"
+            data.append({
+                "ID": b.id,
+                "Title": b.title,
+                "Genre": genre_name,
+                "Library": library_name,
+                "Status": status
+            })
         return export_data(data, ["ID", "Title", "Genre", "Library", "Status"], "Books")
 
 
@@ -141,16 +226,49 @@ class LoanViewSet(ModelViewSet):
 
     @action(detail=False, methods=["GET"])
     def stats(self, request):
-        top = self.get_queryset().values("member__first_name").annotate(c=Count("id")).order_by("-c").first()
-        top_reader = {"name": top["member__first_name"]} if top else None
-        return Response({"count": self.get_queryset().count(), "topReader": top_reader})
+        loans = self.get_queryset()
+
+        top_member = None
+        max_loans = 0
+
+        members = Member.objects.all()
+
+        for m in members:
+            cnt = loans.filter(member=m).count()
+            if cnt > max_loans:
+                max_loans = cnt
+                top_member = m
+
+        return Response({
+            "count": loans.count(),
+            "topReader": {
+                "name": top_member.first_name,
+                "count": max_loans
+            } if top_member else None
+        })
+
 
     @action(detail=False, methods=["GET"])
     def export(self, request):
         data = []
         for l in self.get_queryset():
-            data.append({"ID": l.id, "Book": l.book.title if l.book else "", "Member": l.member.first_name if l.member else "",
-                        "User": l.user.username if l.user else "", "Loan Date": l.loan_date, "Return Date": l.return_date})
+            book_title = ""
+            if l.book:
+                book_title = l.book.title
+            member_name = ""
+            if l.member:
+                member_name = l.member.first_name
+            user_name = ""
+            if l.user:
+                user_name = l.user.username
+            data.append({
+                "ID": l.id,
+                "Book": book_title,
+                "Member": member_name,
+                "User": user_name,
+                "Loan Date": l.loan_date,
+                "Return Date": l.return_date
+            })
         return export_data(data, ["ID", "Book", "Member", "User", "Loan Date", "Return Date"], "Loans")
 
 
@@ -162,24 +280,34 @@ class MemberViewSet(ModelViewSet):
     @action(detail=False, methods=["GET"])
     def stats(self, request):
         qs = self.get_queryset()
-        return Response({"count_users": qs.count(), "count_admins": qs.filter(user__is_superuser=True).count()})
+        count_users = qs.count()
+        count_admins = qs.filter(user__is_superuser=True).count()
+        return Response({"count_users": count_users, "count_admins": count_admins})
 
     def create(self, request, *args, **kwargs):
         data = request.data.copy()
         age = data.pop("age", None)
         library_id = data.pop("library", None)
         password = data.pop("password", None)
-        user, created = User.objects.get_or_create(username=data.get("username"), 
-                                                   defaults={"email": data.get("email", ""), "is_superuser": data.get("is_superuser", False)})
+        username = data.get("username")
+        user, created = User.objects.get_or_create(username=username, defaults={
+            "email": data.get("email", ""),
+            "is_superuser": data.get("is_superuser", False),
+            "is_staff": data.get("is_staff", False),
+        })
         user.set_password(password)
         user.save()
-        library = Library.objects.filter(pk=library_id).first() if library_id else Library.objects.order_by("id").first()
-        member, created_m = Member.objects.get_or_create(user=user, defaults={"library": library, "first_name": data.get("username")})
+        library = None
+        if library_id:
+            library = Library.objects.filter(pk=library_id).first()
+        if library is None:
+            library = Library.objects.order_by("id").first()
+        member, created_m = Member.objects.get_or_create(user=user, defaults={"library": library, "first_name": username})
         if not created_m:
             member.library = library
-            member.first_name = data.get("username")
+            member.first_name = username
             member.save()
-        if age:
+        if age is not None:
             profile, _ = UserProfile.objects.get_or_create(user=user)
             profile.age = age
             profile.save()
@@ -187,32 +315,45 @@ class MemberViewSet(ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         member = self.get_object()
-        user = member.user
         data = request.data.copy()
-        if not user:
-            user = User(username=data.get("username", ""), email=data.get("email", ""))
-            user.set_unusable_password()
-            user.save()
+        user = member.user
+
+        if user is None:
+            user = User.objects.create_user(
+                username=data.get("username", ""),
+                email=data.get("email", ""),
+                password=data.get("password")
+            )
             member.user = user
-            member.save()
-        user.username = data.get("username", user.username)
-        user.email = data.get("email", user.email)
+
+        if "username" in data:
+            user.username = data["username"]
+        if "email" in data:
+            user.email = data["email"]
         if "password" in data:
             user.set_password(data["password"])
-        user.is_superuser = data.get("is_superuser", user.is_superuser)
+        if "is_superuser" in data:
+            user.is_superuser = data["is_superuser"]
+        if "is_staff" in data:
+            user.is_staff = data["is_staff"]
+
         user.save()
+
         if "age" in data:
             profile, _ = UserProfile.objects.get_or_create(user=user)
             profile.age = data["age"]
             profile.save()
+
         if "library" in data and data["library"]:
             lib = Library.objects.filter(pk=data["library"]).first()
             if lib:
                 member.library = lib
-                member.save()
+
         if "username" in data:
             member.first_name = data["username"]
-            member.save()
+
+        member.save()
+
         return Response(self.get_serializer(member).data)
 
     @action(detail=False, methods=["GET"])
@@ -220,8 +361,23 @@ class MemberViewSet(ModelViewSet):
         data = []
         for m in self.get_queryset():
             user = m.user
-            profile = UserProfile.objects.filter(user=user).first() if user else None
-            data.append({"ID": m.id, "Username": user.username if user else "", "Email": user.email if user else "",
-                        "Role": "Администратор" if user and user.is_superuser else "Читатель",
-                        "Age": profile.age if profile and profile.age else ""})
+            username = ""
+            email = ""
+            role = "Читатель"
+            age_val = ""
+            if user:
+                username = user.username
+                email = user.email
+                if user.is_superuser:
+                    role = "Администратор"
+                profile = UserProfile.objects.filter(user=user).first()
+                if profile and profile.age is not None:
+                    age_val = profile.age
+            data.append({
+                "ID": m.id,
+                "Username": username,
+                "Email": email,
+                "Role": role,
+                "Age": age_val
+            })
         return export_data(data, ["ID", "Username", "Email", "Role", "Age"], "Members")

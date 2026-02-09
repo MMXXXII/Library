@@ -5,7 +5,6 @@ import axios from 'axios'
 import { useUserStore } from '../stores/userStore'
 
 const userStore = useUserStore()
-const { isSuperUser } = storeToRefs(userStore)
 const members = ref([])
 const libraries = ref([])
 const memberStats = ref(null)
