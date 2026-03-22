@@ -1,6 +1,5 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { storeToRefs } from 'pinia'
 import axios from 'axios'
 import { useUserStore } from '../stores/userStore'
 
@@ -54,7 +53,7 @@ function resetForm() {
 }
 
 function openEdit(member) {
-  if (!isSuperUser.value) return
+  if (!userStore.isSuperUser) return
   formId.value = member.id
   formUsername.value = member.username || ''
   formEmail.value = member.email || ''
@@ -66,7 +65,7 @@ function openEdit(member) {
 }
 
 async function saveForm() {
-  if (!isSuperUser.value) {
+  if (!userStore.isSuperUser) {
     message.value = 'Только для администратора'
     return
   }
@@ -98,7 +97,7 @@ async function saveForm() {
 }
 
 async function deleteMember(member) {
-  if (!isSuperUser.value) {
+  if (!userStore.isSuperUser) {
     message.value = 'Только для администратора'
     return
   }
@@ -109,7 +108,7 @@ async function deleteMember(member) {
 }
 
 async function exportFile() {
-  if (!isSuperUser.value) return
+  if (!userStore.isSuperUser) return
   const res = await axios.get('/members/export/', { responseType: 'blob' })
   const url = URL.createObjectURL(res.data)
   const a = document.createElement('a')
@@ -135,12 +134,12 @@ onMounted(async () => {
         <p>Всего читателей: {{ memberStats ? memberStats.count_users : 0 }}</p>
         <p>Админов: {{ memberStats ? memberStats.count_admins : 0 }}</p>
       </div>
-      <div class="col-auto" v-if="isSuperUser">
+      <div class="col-auto" v-if="userStore.isSuperUser">
         <button class="btn btn-outline-success" @click="exportFile">Экспорт Excel</button>
       </div>
     </div>
 
-    <div v-if="isSuperUser" class="row g-2 mb-3">
+    <div v-if="userStore.isSuperUser" class="row g-2 mb-3">
       <div class="col">
         <input class="form-control" placeholder="Имя пользователя" v-model="formUsername">
       </div>
@@ -186,7 +185,7 @@ onMounted(async () => {
             Роль: {{ member.is_superuser ? 'Администратор' : 'Читатель' }}
           </div>
         </div>
-        <div v-if="isSuperUser" class="d-flex gap-2">
+        <div v-if="userStore.isSuperUser" class="d-flex gap-2">
           <button class="btn btn-success btn-sm" @click="openEdit(member)"><i class="bi bi-pen-fill"></i></button>
           <button class="btn btn-danger btn-sm" @click="deleteMember(member)"><i class="bi bi-x"></i></button>
         </div>

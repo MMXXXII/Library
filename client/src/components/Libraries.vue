@@ -12,7 +12,8 @@ const formName = ref('')
 
 function getFilteredLibraries() {
   const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return libraries.value
+  if (!q) 
+    return libraries.value
   const out = []
   for (let i = 0; i < libraries.value.length; i++) {
     const l = libraries.value[i]

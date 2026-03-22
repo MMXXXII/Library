@@ -68,7 +68,8 @@ function editBook(book) {
 }
 
 async function saveForm() {
-  if (!formTitle.value || !formGenre.value || !formLibrary.value) return
+  if (!formTitle.value || !formGenre.value || !formLibrary.value) 
+    return
   const payload = { title: formTitle.value, genre: formGenre.value, library: formLibrary.value }
   if (formId.value) {
     await axios.put('/books/' + formId.value + '/', payload)
