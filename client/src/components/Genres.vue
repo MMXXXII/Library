@@ -12,7 +12,8 @@ const formName = ref('')
 
 function getFilteredGenres() {
   const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return genres.value
+  if (!q) 
+    return genres.value
   const out = []
   for (let i = 0; i < genres.value.length; i++) {
     const g = genres.value[i]
@@ -57,7 +58,7 @@ async function deleteGenre(genre) {
 }
 
 async function exportFile() {
-  const res = await axios.get('/genres/export/', { params: { type: 'excel' }, responseType: 'blob' })
+  const res = await axios.get('/genres/export/', { responseType: 'blob' })
   const url = URL.createObjectURL(res.data)
   const a = document.createElement('a')
   a.href = url

@@ -11,7 +11,6 @@ class BookSerializer(serializers.ModelSerializer):
     class Meta:
         model = Book
         fields = ['id', 'title', 'genre', 'library', 'genre_name', 'library_name', 'is_available']
-        read_only_fields = ['user']
 
     def get_is_available(self, obj):
         return obj.is_available()
@@ -53,7 +52,6 @@ class MemberSerializer(serializers.ModelSerializer):
     class Meta:
         model = Member
         fields = ['id', 'username', 'email', 'is_superuser', 'age', 'library', 'library_name']
-
         read_only_fields = ['user']
 
     def create(self, validated_data):
@@ -61,10 +59,6 @@ class MemberSerializer(serializers.ModelSerializer):
         if request:
             validated_data['user'] = request.user
         return super().create(validated_data)
-
-    def update(self, instance, validated_data):
-        return super().update(instance, validated_data)
-
 
 
 class LoanSerializer(serializers.ModelSerializer):
@@ -100,13 +94,9 @@ class UserSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         profile_data = validated_data.pop('userprofile', {})
         age = profile_data.get('age')
-
         instance = super().update(instance, validated_data)
-
         if age is not None:
             profile, _ = UserProfile.objects.get_or_create(user=instance)
             profile.age = age
             profile.save()
-
         return instance
-

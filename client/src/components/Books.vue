@@ -18,7 +18,8 @@ const formFile = ref(null)
 
 function getFilteredBooks() {
   const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return books.value
+  if (!q) 
+    return books.value
   const out = []
   for (let i = 0; i < books.value.length; i++) {
     const b = books.value[i]
@@ -33,12 +34,16 @@ async function loadData() {
   const arr = []
   for (let i = 0; i < booksRes.data.length; i++) {
     const b = booksRes.data[i]
-    const item = { ...b }
-    item.genre_name = b.genre_name || (b.genre && b.genre.name) || ''
-    item.library_name = b.library_name || (b.library && b.library.name) || ''
-    item.status = b.is_available ? 'Доступна' : 'Выдана'
-    arr.push(item)
+    b.genre_name = b.genre_name || (b.genre && b.genre.name) || ''
+    b.library_name = b.library_name || (b.library && b.library.name) || ''
+    if (b.is_available) {
+      b.status = 'Доступна'
+    } else {
+      b.status = 'Выдана'
+    }
+    arr.push(b)
   }
+
   books.value = arr
   const statsRes = await axios.get('/books/stats/')
   bookStats.value = statsRes.data
@@ -68,7 +73,7 @@ function editBook(book) {
 }
 
 async function saveForm() {
-  if (!formTitle.value || !formGenre.value || !formLibrary.value) 
+  if (!formTitle.value || !formGenre.value || !formLibrary.value)
     return
   const payload = { title: formTitle.value, genre: formGenre.value, library: formLibrary.value }
   if (formId.value) {
@@ -86,7 +91,7 @@ async function deleteBook(book) {
 }
 
 async function exportFile() {
-  const res = await axios.get('/books/export/', { params: { type: 'excel' }, responseType: 'blob' })
+  const res = await axios.get('/books/export/', { responseType: 'blob' })
   const url = URL.createObjectURL(res.data)
   const a = document.createElement('a')
   a.href = url
@@ -107,7 +112,8 @@ onMounted(async () => {
     <div class="row mb-3">
       <div class="col">
         <p>Всего книг: {{ bookStats ? bookStats.count : 0 }}</p>
-        <p>Самая популярная: {{ bookStats && bookStats.most_borrowed ? bookStats.most_borrowed.title : 'нет данных' }}</p>
+        <p>Самая популярная: {{ bookStats?.most_borrowed?.title || 'нет данных' }}
+        </p>
       </div>
       <div class="col-auto">
         <button class="btn btn-outline-success" @click="exportFile">Экспорт Excel</button>
@@ -145,7 +151,8 @@ onMounted(async () => {
     </div>
 
     <ul class="list-group">
-      <li v-for="book in getFilteredBooks()" :key="book.id" class="list-group-item d-flex justify-content-between align-items-center">
+      <li v-for="book in getFilteredBooks()" :key="book.id"
+        class="list-group-item d-flex justify-content-between align-items-center">
         <div>
           <div>{{ book.title }}</div>
           <div class="text-muted small">

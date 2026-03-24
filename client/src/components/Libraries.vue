@@ -58,7 +58,7 @@ async function deleteLibrary(lib) {
 }
 
 async function exportFile() {
-  const res = await axios.get('/libraries/export/', { params: { type: 'excel' }, responseType: 'blob' })
+  const res = await axios.get('/libraries/export/', { responseType: 'blob' })
   const url = URL.createObjectURL(res.data)
   const a = document.createElement('a')
   a.href = url

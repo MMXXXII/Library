@@ -5,13 +5,14 @@ from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
 from openpyxl import Workbook
-from rest_framework import permissions, serializers
+from rest_framework import permissions
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.viewsets import ModelViewSet, GenericViewSet
 from rest_framework.permissions import IsAuthenticated
 from library.models import Library, Book, Genre, Member, Loan, UserProfile, User
 from library.serializers import LibrarySerializer, BookSerializer, GenreSerializer, LoanSerializer, MemberSerializer
+from rest_framework import serializers
 
 
 class LoginSerializer(serializers.Serializer):
@@ -52,7 +53,6 @@ class UserProfileViewSet(GenericViewSet):
         if user is None or not user.is_authenticated:
             return Response({"success": False, "is_authenticated": False})
         login(request, user)
-        UserProfile.objects.get_or_create(user=user)
         return Response({
             "success": True,
             "is_authenticated": True,
@@ -94,16 +94,13 @@ class GenreViewSet(ModelViewSet):
     @action(detail=False, methods=["GET"])
     def stats(self, request):
         genres = Genre.objects.all()
-
         top = None
         max_books = 0
-
         for g in genres:
             books_count = Book.objects.filter(genre=g).count()
             if books_count > max_books:
                 max_books = books_count
                 top = g
-
         return Response({
             "count": genres.count(),
             "top": top.name if top else None
@@ -128,21 +125,24 @@ class LibraryViewSet(ModelViewSet):
     @action(detail=False, methods=["GET"])
     def stats(self, request):
         libraries = Library.objects.all()
-
+        books = Book.objects.all()
         top = None
         max_loans = 0
 
         for lib in libraries:
-            loans = Loan.objects.filter(book__library=lib).count()
-            if loans > max_loans:
-                max_loans = loans
+            loans_count = 0
+            for book in books:
+                if book.library == lib:
+                    for loan in Loan.objects.filter(book=book):
+                        loans_count += 1
+            if loans_count > max_loans:
+                max_loans = loans_count
                 top = lib
 
         return Response({
             "count": libraries.count(),
             "top": top.name if top else None
         })
-
 
     @action(detail=False, methods=["GET"])
     def export(self, request):
@@ -163,16 +163,13 @@ class BookViewSet(ModelViewSet):
     @action(detail=False, methods=["GET"])
     def stats(self, request):
         books = Book.objects.all()
-
         top = None
         max_loans = 0
-
         for b in books:
             loans = Loan.objects.filter(book=b).count()
             if loans > max_loans:
                 max_loans = loans
                 top = b
-
         return Response({
             "count": books.count(),
             "most_borrowed": {
@@ -181,7 +178,6 @@ class BookViewSet(ModelViewSet):
                 "count": max_loans
             } if top else None
         })
-
 
     @action(detail=False, methods=["GET"])
     def export(self, request):
@@ -193,8 +189,9 @@ class BookViewSet(ModelViewSet):
             library_name = ""
             if b.library:
                 library_name = b.library.name
-            status = "Available"
-            if not b.is_available:
+            if b.is_available():
+                status = "Available"
+            else:
                 status = "Borrowed"
             data.append({
                 "ID": b.id,
@@ -212,10 +209,16 @@ class LoanViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        qs = Loan.objects.all()
-        if not self.request.user.is_superuser:
-            qs = qs.filter(member__user=self.request.user)
-        return qs
+        user = self.request.user
+        loans = Loan.objects.all()
+        if user.is_superuser:
+            return loans
+
+        my_loans = []
+        for loan in loans:
+            if loan.member and loan.member.user == user:
+                my_loans.append(loan)
+        return my_loans
 
     @action(detail=True, methods=["POST"], url_path="return")
     def return_book(self, request, pk=None):
@@ -227,18 +230,14 @@ class LoanViewSet(ModelViewSet):
     @action(detail=False, methods=["GET"])
     def stats(self, request):
         loans = self.get_queryset()
-
         top_member = None
         max_loans = 0
-
         members = Member.objects.all()
-
         for m in members:
             cnt = loans.filter(member=m).count()
             if cnt > max_loans:
                 max_loans = cnt
                 top_member = m
-
         return Response({
             "count": loans.count(),
             "topReader": {
@@ -246,7 +245,6 @@ class LoanViewSet(ModelViewSet):
                 "count": max_loans
             } if top_member else None
         })
-
 
     @action(detail=False, methods=["GET"])
     def export(self, request):
@@ -281,7 +279,10 @@ class MemberViewSet(ModelViewSet):
     def stats(self, request):
         qs = self.get_queryset()
         count_users = qs.count()
-        count_admins = qs.filter(user__is_superuser=True).count()
+        count_admins = 0
+        for member in qs:
+            if member.user and member.user.is_superuser:
+                count_admins += 1
         return Response({"count_users": count_users, "count_admins": count_admins})
 
     def create(self, request, *args, **kwargs):
@@ -317,7 +318,6 @@ class MemberViewSet(ModelViewSet):
         member = self.get_object()
         data = request.data.copy()
         user = member.user
-
         if user is None:
             user = User.objects.create_user(
                 username=data.get("username", ""),
@@ -325,9 +325,9 @@ class MemberViewSet(ModelViewSet):
                 password=data.get("password")
             )
             member.user = user
-
         if "username" in data:
             user.username = data["username"]
+            member.first_name = data["username"]
         if "email" in data:
             user.email = data["email"]
         if "password" in data:
@@ -336,24 +336,16 @@ class MemberViewSet(ModelViewSet):
             user.is_superuser = data["is_superuser"]
         if "is_staff" in data:
             user.is_staff = data["is_staff"]
-
         user.save()
-
         if "age" in data:
             profile, _ = UserProfile.objects.get_or_create(user=user)
             profile.age = data["age"]
             profile.save()
-
         if "library" in data and data["library"]:
             lib = Library.objects.filter(pk=data["library"]).first()
             if lib:
                 member.library = lib
-
-        if "username" in data:
-            member.first_name = data["username"]
-
         member.save()
-
         return Response(self.get_serializer(member).data)
 
     @action(detail=False, methods=["GET"])

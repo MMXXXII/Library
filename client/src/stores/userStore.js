@@ -6,26 +6,15 @@ export const useUserStore = defineStore('user', () => {
   const user = ref(null)
   const isAuthenticated = ref(false)
   const isSuperUser = ref(false)
-  const loading = ref(false)
-  const pendingUsername = ref(null)
 
   function initializePending() {
-    const savedPending = sessionStorage.getItem('pending_username')
-    if (savedPending) {
-      pendingUsername.value = savedPending
-    }
   }
 
   async function login(usernameParam, passwordParam) {
-    loading.value = true
-
     const response = await axios.post('/userprofile/login/', {
       username: usernameParam,
       password: passwordParam,
     })
-
-    loading.value = false
-
     if (response.data.success) {
       user.value = {
         username: response.data.username,
@@ -46,31 +35,19 @@ export const useUserStore = defineStore('user', () => {
   }
 
   async function logout() {
-    loading.value = true
     await axios.post('/userprofile/logout/')
-    resetAuthState()
-    sessionStorage.removeItem('pending_username')
-    loading.value = false
-  }
-
-  function resetAuthState() {
     user.value = null
     isAuthenticated.value = false
     isSuperUser.value = false
-    pendingUsername.value = null
   }
 
   return {
     user,
     isAuthenticated,
-    login,
     isSuperUser,
-    loading,
-    pendingUsername,
-    
-    initializePending,
-
+    login,
     fetchUserInfo,
     logout,
+    initializePending,
   }
 })

@@ -19,7 +19,8 @@ const message = ref('')
 
 function getFilteredMembers() {
   const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return members.value
+  if (!q) 
+    return members.value
   return members.value.filter(m => {
     const name = m.username || ''
     return name.toLowerCase().includes(q)
@@ -53,7 +54,8 @@ function resetForm() {
 }
 
 function openEdit(member) {
-  if (!userStore.isSuperUser) return
+  if (!userStore.isSuperUser) 
+    return
   formId.value = member.id
   formUsername.value = member.username || ''
   formEmail.value = member.email || ''
@@ -84,8 +86,10 @@ async function saveForm() {
     age: formAge.value,
     is_superuser: formIsSuperuser.value
   }
-  if (formLibrary.value) payload.library = formLibrary.value
-  if (formPassword.value) payload.password = formPassword.value
+  if (formLibrary.value) 
+    payload.library = formLibrary.value
+  if (formPassword.value) 
+    payload.password = formPassword.value
   if (formId.value) {
     await axios.put('/members/' + formId.value + '/', payload)
   } else {

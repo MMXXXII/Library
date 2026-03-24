@@ -19,26 +19,17 @@ const formMember = ref(null)
 const formLoanDate = ref('')
 
 function getFilteredLoans() {
-  const loansWithDetails = loans.value.map(loan => {
-    const book = books.value.find(b => b.id === loan.book)
-    const member = members.value.find(m => m.id === loan.member)
-    const library = book ? libraries.value.find(l => l.id === book.library) : null
-    
-    return {
-      ...loan,
-      book_title: book ? book.title : '',
-      member_name: member ? member.username : 'Неизвестно',
-      library_name: library ? library.name : '',
-      status: loan.return_date ? 'Возвращена' : 'Выдана'
-    }
-  })
-  
   const q = searchQuery.value.trim().toLowerCase()
-  if (!q) return loansWithDetails
-  return loansWithDetails.filter(loan => {
-    return loan.book_title.toLowerCase().includes(q) || 
-           loan.member_name.toLowerCase().includes(q)
-  })
+  if (!q) return loans.value
+  const out = []
+  for (let i = 0; i < loans.value.length; i++) {
+    const loan = loans.value[i]
+    if (
+      loan.book_title.toLowerCase().indexOf(q) !== -1 ||
+      loan.member_name.toLowerCase().indexOf(q) !== -1
+    ) out.push(loan)
+  }
+  return out
 }
 
 function getAvailableBooks() {
@@ -65,6 +56,40 @@ async function loadData() {
   const librariesRes = await axios.get('/libraries/')
   libraries.value = librariesRes.data
   const loansRes = await axios.get('/loans/')
+  for (let i = 0; i < loansRes.data.length; i++) {
+    const loan = loansRes.data[i]
+    const book = books.value.find(b => b.id === loan.book)
+    const member = members.value.find(m => m.id === loan.member)
+
+    if (book) {
+      loan.book_title = book.title
+    } else {
+      loan.book_title = ''
+    }
+
+    if (member) {
+      loan.member_name = member.username
+    } else {
+      loan.member_name = 'Неизвестно'
+    }
+
+    if (book) {
+      const library = libraries.value.find(l => l.id === book.library)
+      if (library) {
+        loan.library_name = library.name
+      } else {
+        loan.library_name = ''
+      }
+    } else {
+      loan.library_name = ''
+    }
+
+    if (loan.return_date) {
+      loan.status = 'Возвращена'
+    } else {
+      loan.status = 'Выдана'
+    }
+  }
   loans.value = loansRes.data
   const statsRes = await axios.get('/loans/stats/')
   loanStats.value = statsRes.data

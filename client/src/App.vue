@@ -12,7 +12,6 @@ async function handleLogout() {
 }
 
 onMounted(() => {
-  userStore.initializePending()
   userStore.fetchUserInfo()
 })
 </script>
