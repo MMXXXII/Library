@@ -11,6 +11,10 @@ async function handleLogout() {
   router.push('/login')
 }
 
+function openAdmin() {
+  window.open('/admin', '_blank')
+}
+
 onMounted(() => {
   userStore.fetchUserInfo()
 })
@@ -37,7 +41,7 @@ onMounted(() => {
         </ul>
       </div>
 
-      <button v-if="userStore.isAuthenticated" type="button" class="btn btn-light" @click="window.open('/admin', '_blank')">Админка</button>
+      <button v-if="userStore.isAuthenticated" type="button" class="btn btn-light" @click="openAdmin">Админка</button>
     </div>
   </div>
 

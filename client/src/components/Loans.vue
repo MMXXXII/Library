@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { useUserStore } from '../stores/userStore'
 
@@ -16,36 +16,32 @@ const formId = ref(null)
 const formLibrary = ref(null)
 const formBook = ref(null)
 const formMember = ref(null)
-const formLoanDate = ref('')
+const formReturnDate = ref('')
+const showModal = ref(false)
 
-function getFilteredLoans() {
+const filteredLoans = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
   if (!q) return loans.value
-  const out = []
-  for (let i = 0; i < loans.value.length; i++) {
-    const loan = loans.value[i]
-    if (
-      loan.book_title.toLowerCase().indexOf(q) !== -1 ||
-      loan.member_name.toLowerCase().indexOf(q) !== -1
-    ) out.push(loan)
-  }
-  return out
-}
+  return loans.value.filter(loan =>
+    loan.book_title.toLowerCase().includes(q) ||
+    loan.member_name.toLowerCase().includes(q)
+  )
+})
 
-function getAvailableBooks() {
+const availableBooks = computed(() => {
   return books.value.filter(b => {
     if (!b.is_available) return false
     if (formLibrary.value && b.library !== formLibrary.value) return false
     return true
   })
-}
+})
 
 function resetForm() {
   formId.value = null
   formLibrary.value = null
   formBook.value = null
   formMember.value = null
-  formLoanDate.value = ''
+  formReturnDate.value = ''
 }
 
 async function loadData() {
@@ -95,29 +91,41 @@ async function loadData() {
   loanStats.value = statsRes.data
 }
 
+function openAddModal() {
+  resetForm()
+  showModal.value = true
+}
+
 function openEdit(loan) {
   const book = books.value.find(b => b.id === loan.book)
   formId.value = loan.id
   formLibrary.value = book ? book.library : null
   formBook.value = loan.book
   formMember.value = loan.member
-  formLoanDate.value = loan.loan_date
+  formReturnDate.value = loan.return_date
+  showModal.value = true
+}
+
+function closeModal() {
+  resetForm()
+  showModal.value = false
 }
 
 async function saveForm() {
-  if (!formBook.value || !formLoanDate.value) return
-  const data = { book: formBook.value, loan_date: formLoanDate.value }
+  if (!formBook.value) return
+  const data = { book: formBook.value, loan_date: formReturnDate.value }
   if (formMember.value) data.member = formMember.value
   if (formId.value) {
     await axios.put('/loans/' + formId.value + '/', data)
   } else {
     await axios.post('/loans/', data)
   }
-  resetForm()
+  closeModal()
   await loadData()
 }
 
 async function deleteLoan(loan) {
+  if (!confirm(`Вы точно хотите удалить выдачу книги "${loan.book_title}"?`)) return
   await axios.delete('/loans/' + loan.id + '/')
   await loadData()
 }
@@ -146,40 +154,14 @@ onMounted(async () => {
 <template>
   <div class="container mt-4">
 
-    <div class="row mb-3">
+    <div class="row mb-3 align-items-center">
       <div class="col">
         <p>Всего выдач: {{ loanStats ? loanStats.count : 0 }}</p>
         <p>Читатель с максимальным количеством книг: {{ loanStats && loanStats.topReader ? loanStats.topReader.name : 'не найден' }}</p>
       </div>
-      <div class="col-auto">
+      <div class="col-auto d-flex gap-2">
+        <button v-if="userStore.isSuperUser" class="btn btn-primary" @click="openAddModal">Добавить выдачу</button>
         <button class="btn btn-outline-success" @click="exportLoans">Экспорт Excel</button>
-      </div>
-    </div>
-
-    <div v-if="userStore.isSuperUser" class="row g-2 mb-3">
-      <div class="col">
-        <select class="form-select" v-model="formLibrary" @change="formBook = null">
-          <option value="">Библиотека</option>
-          <option v-for="l in libraries" :key="l.id" :value="l.id">{{ l.name }}</option>
-        </select>
-      </div>
-      <div class="col">
-        <select class="form-select" v-model="formBook">
-          <option value="">Книга</option>
-          <option v-for="b in getAvailableBooks()" :key="b.id" :value="b.id">{{ b.title }}</option>
-        </select>
-      </div>
-      <div class="col">
-        <select class="form-select" v-model="formMember">
-          <option value="">Читатель</option>
-          <option v-for="m in members" :key="m.id" :value="m.id">{{ m.username }}</option>
-        </select>
-      </div>
-      <div class="col">
-        <input type="date" class="form-control" v-model="formLoanDate">
-      </div>
-      <div class="col-auto">
-        <button class="btn btn-primary" @click="saveForm">{{ formId ? 'Сохранить' : 'Добавить' }}</button>
       </div>
     </div>
 
@@ -190,7 +172,7 @@ onMounted(async () => {
     </div>
 
     <ul class="list-group">
-      <li v-for="loan in getFilteredLoans()" :key="loan.id"
+      <li v-for="loan in filteredLoans" :key="loan.id"
         class="list-group-item d-flex justify-content-between align-items-center">
         <div>
           <div>{{ loan.book_title }}</div>
@@ -211,10 +193,41 @@ onMounted(async () => {
           </button>
         </div>
       </li>
-      <li v-if="getFilteredLoans().length === 0" class="list-group-item text-center text-muted">
+      <li v-if="filteredLoans.length === 0" class="list-group-item text-center text-muted">
         Выдач пока нет
       </li>
     </ul>
+
+    <div v-if="showModal" class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">{{ formId ? 'Редактировать выдачу' : 'Добавить выдачу' }}</h5>
+            <button type="button" class="btn-close" @click="closeModal"></button>
+          </div>
+          <div class="modal-body d-flex flex-column gap-2">
+            <select class="form-select" v-model="formLibrary" @change="formBook = null">
+              <option value="">Библиотека</option>
+              <option v-for="l in libraries" :key="l.id" :value="l.id">{{ l.name }}</option>
+            </select>
+            <select class="form-select" v-model="formBook">
+              <option value="">Книга</option>
+              <option v-for="b in availableBooks" :key="b.id" :value="b.id">{{ b.title }}</option>
+            </select>
+            <select class="form-select" v-model="formMember">
+              <option value="">Читатель</option>
+              <option v-for="m in members" :key="m.id" :value="m.id">{{ m.username }}</option>
+            </select>
+            <label class="form-label mb-0">Дата возврата книги</label>
+            <input type="date" class="form-control" v-model="formReturnDate">
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="closeModal">Отмена</button>
+            <button class="btn btn-primary" @click="saveForm">{{ formId ? 'Сохранить' : 'Добавить' }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
   </div>
 </template>

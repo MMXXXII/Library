@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import axios from 'axios'
 import { useUserStore } from '../stores/userStore'
 
@@ -16,18 +16,14 @@ const formGenre = ref('')
 const formLibrary = ref('')
 const formFile = ref(null)
 
-function getFilteredBooks() {
+const showModal = ref(false)
+
+const filteredBooks = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
-  if (!q) 
+  if (!q)
     return books.value
-  const out = []
-  for (let i = 0; i < books.value.length; i++) {
-    const b = books.value[i]
-    const title = b.title || ''
-    if (title.toLowerCase().indexOf(q) !== -1) out.push(b)
-  }
-  return out
-}
+  return books.value.filter(b => (b.title || '').toLowerCase().includes(q))
+})
 
 async function loadData() {
   const booksRes = await axios.get('/books/')
@@ -65,27 +61,38 @@ function onFileChange(e) {
   formFile.value = e.target.files[0]
 }
 
+function openAddModal() {
+  resetForm()
+  showModal.value = true
+}
+
 function editBook(book) {
   formId.value = book.id
   formTitle.value = book.title
   formGenre.value = (book.genre && book.genre.id) || book.genre
   formLibrary.value = (book.library && book.library.id) || book.library
+  showModal.value = true
+}
+
+function closeModal() {
+  resetForm()
+  showModal.value = false
 }
 
 async function saveForm() {
-  if (!formTitle.value || !formGenre.value || !formLibrary.value)
-    return
+  if (!formTitle.value || !formGenre.value || !formLibrary.value) return
   const payload = { title: formTitle.value, genre: formGenre.value, library: formLibrary.value }
   if (formId.value) {
     await axios.put('/books/' + formId.value + '/', payload)
   } else {
     await axios.post('/books/', payload)
   }
-  resetForm()
+  closeModal()
   await loadData()
 }
 
 async function deleteBook(book) {
+  if (!confirm(`Вы точно хотите удалить книгу "${book.title}"?`)) return
   await axios.delete('/books/' + book.id + '/')
   await loadData()
 }
@@ -109,38 +116,14 @@ onMounted(async () => {
 <template>
   <div class="container mt-4">
 
-    <div class="row mb-3">
+    <div class="row mb-3 align-items-center">
       <div class="col">
         <p>Всего книг: {{ bookStats ? bookStats.count : 0 }}</p>
-        <p>Самая популярная: {{ bookStats?.most_borrowed?.title || 'нет данных' }}
-        </p>
+        <p>Самая популярная: {{ bookStats?.most_borrowed?.title || 'нет данных' }}</p>
       </div>
-      <div class="col-auto">
+      <div class="col-auto d-flex gap-2">
+        <button v-if="userStore.isSuperUser" class="btn btn-primary" @click="openAddModal">Добавить книгу</button>
         <button class="btn btn-outline-success" @click="exportFile">Экспорт Excel</button>
-      </div>
-    </div>
-
-    <div v-if="userStore.isSuperUser" class="row g-2 mb-3">
-      <div class="col">
-        <input class="form-control" placeholder="Название книги" v-model="formTitle">
-      </div>
-      <div class="col">
-        <select class="form-select" v-model="formGenre">
-          <option value="">Жанр</option>
-          <option v-for="g in genres" :key="g.id" :value="g.id">{{ g.name }}</option>
-        </select>
-      </div>
-      <div class="col">
-        <select class="form-select" v-model="formLibrary">
-          <option value="">Библиотека</option>
-          <option v-for="l in libraries" :key="l.id" :value="l.id">{{ l.name }}</option>
-        </select>
-      </div>
-      <div class="col">
-        <input type="file" class="form-control" @change="onFileChange">
-      </div>
-      <div class="col-auto">
-        <button class="btn btn-primary" @click="saveForm">{{ formId ? 'Сохранить' : 'Добавить' }}</button>
       </div>
     </div>
 
@@ -151,7 +134,7 @@ onMounted(async () => {
     </div>
 
     <ul class="list-group">
-      <li v-for="book in getFilteredBooks()" :key="book.id"
+      <li v-for="book in filteredBooks" :key="book.id"
         class="list-group-item d-flex justify-content-between align-items-center">
         <div>
           <div>{{ book.title }}</div>
@@ -164,8 +147,35 @@ onMounted(async () => {
           <button class="btn btn-danger btn-sm" @click="deleteBook(book)"><i class="bi bi-x"></i></button>
         </div>
       </li>
-      <li v-if="getFilteredBooks().length === 0" class="list-group-item text-center text-muted">Книг пока нет</li>
+      <li v-if="filteredBooks.length === 0" class="list-group-item text-center text-muted">Книг пока нет</li>
     </ul>
+
+    <div v-if="showModal" class="modal d-block" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">{{ formId ? 'Редактировать книгу' : 'Добавить книгу' }}</h5>
+            <button type="button" class="btn-close" @click="closeModal"></button>
+          </div>
+          <div class="modal-body d-flex flex-column gap-2">
+            <input class="form-control" placeholder="Название книги" v-model="formTitle">
+            <select class="form-select" v-model="formGenre">
+              <option value="">Жанр</option>
+              <option v-for="g in genres" :key="g.id" :value="g.id">{{ g.name }}</option>
+            </select>
+            <select class="form-select" v-model="formLibrary">
+              <option value="">Библиотека</option>
+              <option v-for="l in libraries" :key="l.id" :value="l.id">{{ l.name }}</option>
+            </select>
+            <input type="file" class="form-control" @change="onFileChange">
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" @click="closeModal">Отмена</button>
+            <button class="btn btn-primary" @click="saveForm">{{ formId ? 'Сохранить' : 'Добавить' }}</button>
+          </div>
+        </div>
+      </div>
+    </div>
 
   </div>
 </template>

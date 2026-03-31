@@ -118,7 +118,7 @@ class GenreViewSet(ModelViewSet):
 
 
 class LibraryViewSet(ModelViewSet):
-    queryset = Library.objects.order_by("name")
+    queryset = Library.objects.all()
     serializer_class = LibrarySerializer
     permission_classes = [IsAuthenticated]
 

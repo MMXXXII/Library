@@ -7,9 +7,6 @@ export const useUserStore = defineStore('user', () => {
   const isAuthenticated = ref(false)
   const isSuperUser = ref(false)
 
-  function initializePending() {
-  }
-
   async function login(usernameParam, passwordParam) {
     const response = await axios.post('/userprofile/login/', {
       username: usernameParam,
@@ -48,6 +45,5 @@ export const useUserStore = defineStore('user', () => {
     login,
     fetchUserInfo,
     logout,
-    initializePending,
   }
 })
