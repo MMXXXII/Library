@@ -218,7 +218,7 @@ onMounted(async () => {
               <option value="">Читатель</option>
               <option v-for="m in members" :key="m.id" :value="m.id">{{ m.username }}</option>
             </select>
-            <label class="form-label mb-0">Дата возврата книги</label>
+            <label class="form-label mb-0">Дата взятия книги</label>
             <input type="date" class="form-control" v-model="formReturnDate">
           </div>
           <div class="modal-footer">
