@@ -15,16 +15,6 @@ onMounted(async () => {
   await userStore.fetchUserInfo()
 })
 
-async function handleLogin() {
-  error.value = ''
-  await userStore.login(username.value, password.value)
-  if (userStore.isAuthenticated) {
-    router.replace('/books')
-  } else {
-    error.value = 'Неверный логин или пароль'
-  }
-}
-
 async function handleLogout() {
   await userStore.logout()
   router.replace('/login')

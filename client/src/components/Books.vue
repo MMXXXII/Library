@@ -20,8 +20,7 @@ const showModal = ref(false)
 
 const filteredBooks = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
-  if (!q)
-    return books.value
+  if (!q) return books.value
   return books.value.filter(b => (b.title || '').toLowerCase().includes(q))
 })
 
@@ -115,7 +114,6 @@ onMounted(async () => {
 
 <template>
   <div class="container mt-4">
-
     <div class="row mb-3 align-items-center">
       <div class="col">
         <p>Всего книг: {{ bookStats ? bookStats.count : 0 }}</p>
@@ -134,8 +132,7 @@ onMounted(async () => {
     </div>
 
     <ul class="list-group">
-      <li v-for="book in filteredBooks" :key="book.id"
-        class="list-group-item d-flex justify-content-between align-items-center">
+      <li v-for="book in filteredBooks" :key="book.id" class="list-group-item d-flex justify-content-between align-items-center">
         <div>
           <div>{{ book.title }}</div>
           <div class="text-muted small">
@@ -167,7 +164,6 @@ onMounted(async () => {
               <option value="">Библиотека</option>
               <option v-for="l in libraries" :key="l.id" :value="l.id">{{ l.name }}</option>
             </select>
-            <input type="file" class="form-control" @change="onFileChange">
           </div>
           <div class="modal-footer">
             <button class="btn btn-secondary" @click="closeModal">Отмена</button>
@@ -176,6 +172,5 @@ onMounted(async () => {
         </div>
       </div>
     </div>
-
   </div>
 </template>

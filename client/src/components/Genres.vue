@@ -59,7 +59,8 @@ async function saveForm() {
 }
 
 async function deleteGenre(genre) {
-  if (!confirm(`Вы точно хотите удалить жанр "${genre.name}"?`)) return
+  if (!confirm(`Вы точно хотите удалить жанр "${genre.name}"?`)) 
+    return
   await axios.delete('/genres/' + genre.id + '/')
   await loadData()
 }

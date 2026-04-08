@@ -24,7 +24,6 @@ export const useUserStore = defineStore('user', () => {
   }
 
   async function fetchUserInfo() {
-    await axios.get('/userprofile/csrf/')
     const { data } = await axios.get('/userprofile/info/')
     user.value = data
     isAuthenticated.value = !!data.is_authenticated

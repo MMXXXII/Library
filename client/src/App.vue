@@ -22,7 +22,6 @@ onMounted(() => {
 
 <template>
   <div class="container mt-3 mb-3 d-flex align-items-center gap-2 flex-wrap">
-
     <button v-if="userStore.isAuthenticated" type="button" class="btn btn-light" @click="$router.push('/genres')">Жанры</button>
     <button v-if="userStore.isAuthenticated" type="button" class="btn btn-light" @click="$router.push('/libraries')">Библиотеки</button>
     <button v-if="userStore.isAuthenticated" type="button" class="btn btn-light" @click="$router.push('/books')">Книги</button>

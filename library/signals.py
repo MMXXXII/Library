@@ -9,7 +9,6 @@ from .models import Member, Library, UserProfile
 def create_member_profile(sender, instance, created, **kwargs):
     if created:
         UserProfile.objects.get_or_create(user=instance)
-        
         library = Library.objects.first()
         
         if library:

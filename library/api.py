@@ -24,10 +24,10 @@ class UserProfileViewSet(GenericViewSet):
     permission_classes = [permissions.AllowAny]
     serializer_class = LoginSerializer
 
-    @method_decorator(ensure_csrf_cookie)
-    @action(detail=False, url_path="csrf", methods=["GET"])
-    def csrf(self, request, *args, **kwargs):
-        return Response({"ok": True})
+    # @method_decorator(ensure_csrf_cookie)
+    # @action(detail=False, url_path="csrf", methods=["GET"])
+    # def csrf(self, request, *args, **kwargs):
+    #     return Response({"ok": True})
 
     @action(detail=False, url_path="info", methods=["GET"])
     def info(self, request, *args, **kwargs):
@@ -41,6 +41,7 @@ class UserProfileViewSet(GenericViewSet):
         if user.is_authenticated:
             result["username"] = user.username
             result["is_superuser"] = user.is_superuser
+            result["email"] = user.email  
         return Response(result)
 
     @action(detail=False, url_path="login", methods=["POST"])
