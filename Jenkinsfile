@@ -2,6 +2,7 @@ pipeline {
     agent any
 
     environment {
+        PATH = "C:\\Users\\perfi\\Desktop\\study\\5\\WEB programming\\library\\.venv\\Scripts\\;${env.PATH}"
         DJANGO_SETTINGS_MODULE = 'library.settings'
         PYTHONUNBUFFERED = '1'
     }
@@ -10,34 +11,32 @@ pipeline {
         stage('Checkout') {
             steps {
                 checkout scm
-                echo 'Код получен из репозитория'
+                echo 'Code checked out'
             }
         }
 
-        stage('Backend Setup') {
+        stage('Setup') {
             steps {
                 dir('app') {
                     bat '''
-                        python -m venv venv
-                        venv\\Scripts\\activate
+                        python --version
                         pip install -r requirements.txt
                     '''
                 }
             }
         }
 
-        stage('Run Tests') {
+        stage('Test') {
             steps {
                 dir('app') {
                     bat '''
-                        venv\\Scripts\\activate
                         python manage.py test --noinput
                     '''
                 }
             }
         }
 
-        stage('Build Frontend') {
+        stage('Build') {
             steps {
                 dir('client') {
                     bat '''
@@ -53,17 +52,17 @@ pipeline {
                 branch 'main'
             }
             steps {
-                echo 'Развертывание на продакшн (заглушка)'
+                echo 'Deploy to production'
             }
         }
     }
 
     post {
         success {
-            echo 'CI/CD Pipeline выполнен успешно!'
+            echo 'Build succeeded'
         }
         failure {
-            echo 'Pipeline завершился с ошибкой!'
+            echo 'Build failed'
         }
     }
 }
