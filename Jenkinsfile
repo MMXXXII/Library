@@ -3,7 +3,7 @@ pipeline {
 
     environment {
         PATH = "C:\\Users\\perfi\\Desktop\\study\\5\\WEB programming\\library\\.venv\\Scripts\\;${env.PATH}"
-        DJANGO_SETTINGS_MODULE = 'library.settings'
+        DJANGO_SETTINGS_MODULE = 'app.settings'
         PYTHONUNBUFFERED = '1'
     }
 
