@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        PATH = "C:\\Users\\perfi\\Desktop\\study\\5\\WEB programming\\library\\.venv\\Scripts\\;${env.PATH}"
+        PATH = "C:\\Users\\perfi\\Desktop\\study\\5\\WEB programming\\library\\.venv\\Scripts\\;C:\\Program Files\\nodejs\\;${env.PATH}"
         DJANGO_SETTINGS_MODULE = 'app.settings'
         PYTHONUNBUFFERED = '1'
     }
