@@ -26,15 +26,13 @@ pipeline {
 
         stage('Test') {
             steps {
-                dir('app') {
-                    bat '''
-                        python manage.py test --noinput
-                    '''
-                }
+                bat '''
+                    python manage.py test --noinput
+                '''
             }
         }
 
-        stage('Build') {
+        stage('Build Frontend') {
             steps {
                 dir('client') {
                     bat '''
