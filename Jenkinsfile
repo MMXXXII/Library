@@ -17,12 +17,10 @@ pipeline {
 
         stage('Setup') {
             steps {
-                dir('app') {
-                    bat '''
-                        python --version
-                        pip install -r requirements.txt
-                    '''
-                }
+                bat '''
+                    python --version
+                    pip install -r requirements.txt
+                '''
             }
         }
 
