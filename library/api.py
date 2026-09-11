@@ -24,11 +24,6 @@ class UserProfileViewSet(GenericViewSet):
     permission_classes = [permissions.AllowAny]
     serializer_class = LoginSerializer
 
-    # @method_decorator(ensure_csrf_cookie)
-    # @action(detail=False, url_path="csrf", methods=["GET"])
-    # def csrf(self, request, *args, **kwargs):
-    #     return Response({"ok": True})
-
     @action(detail=False, url_path="info", methods=["GET"])
     def info(self, request, *args, **kwargs):
         user = request.user
