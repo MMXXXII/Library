@@ -44,11 +44,17 @@ pipeline {
         }
 
         stage('Deploy') {
-            when {
-                branch 'main'
-            }
+            when { branch 'main' }
             steps {
-                echo 'Deploy to production'
+                script {
+                    def deployDir = "C:\\deploy\\library-app"
+                    bat """
+                        if not exist "${deployDir}" mkdir "${deployDir}"
+                        xcopy /E /I /Y "client\\dist" "${deployDir}\\frontend"
+                        xcopy /E /I /Y "app" "${deployDir}\\backend"
+                    """
+                    echo "Приложение развернуто в ${deployDir}"
+                }
             }
         }
     }
