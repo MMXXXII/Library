@@ -44,7 +44,6 @@ pipeline {
         }
 
         stage('Deploy') {
-            when { branch 'main' }
             steps {
                 script {
                     def deployDir = "C:\\deploy\\library-app"
@@ -54,6 +53,19 @@ pipeline {
                         xcopy /E /I /Y "app" "${deployDir}\\backend"
                     """
                     echo "Приложение развернуто в ${deployDir}"
+                }
+            }
+        }
+
+        stage('Run') {
+            steps {
+                script {
+                    def deployDir = "C:\\deploy\\library-app"
+                    bat """
+                        cd /d "${deployDir}\\backend"
+                        start "LibraryApp" cmd /c "python manage.py runserver 0.0.0.0:8000"
+                    """
+                    echo "Приложение запущено на http://localhost:8000"
                 }
             }
         }
