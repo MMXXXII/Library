@@ -48,9 +48,16 @@ pipeline {
                 script {
                     def deployDir = "C:\\deploy\\library-app"
                     bat """
-                        if not exist "${deployDir}" mkdir "${deployDir}"
-                        xcopy /E /I /Y "client\\dist" "${deployDir}\\frontend"
-                        xcopy /E /I /Y "app" "${deployDir}\\backend"
+                        if exist "${deployDir}" rmdir /S /Q "${deployDir}"
+                        mkdir "${deployDir}"
+                        xcopy /E /I /Y "manage.py" "${deployDir}\\"
+                        xcopy /E /I /Y "requirements.txt" "${deployDir}\\"
+                        xcopy /E /I /Y "db.sqlite3" "${deployDir}\\"
+                        xcopy /E /I /Y "app" "${deployDir}\\app"
+                        xcopy /E /I /Y "library" "${deployDir}\\library"
+                        if exist "templates" xcopy /E /I /Y "templates" "${deployDir}\\templates"
+                        if exist "media" xcopy /E /I /Y "media" "${deployDir}\\media"
+                        if exist "client\\dist" xcopy /E /I /Y "client\\dist" "${deployDir}\\frontend"
                     """
                     echo "Приложение развернуто в ${deployDir}"
                 }
@@ -62,7 +69,7 @@ pipeline {
                 script {
                     def deployDir = "C:\\deploy\\library-app"
                     bat """
-                        cd /d "${deployDir}\\backend"
+                        cd /d "${deployDir}"
                         start "LibraryApp" cmd /c "python manage.py runserver 0.0.0.0:8000"
                     """
                     echo "Приложение запущено на http://localhost:8000"
