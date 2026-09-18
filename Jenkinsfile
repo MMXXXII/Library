@@ -42,15 +42,14 @@ pipeline {
     }
 
     stage('Run Frontend') {
-        steps {
-            bat '''
-                schtasks /create /tn "LibraryFrontend" /tr "C:\\deploy\\frontend\\run_frontend.bat" /sc once /st 00:00 /f
-                schtasks /run /tn "LibraryFrontend"
-                timeout /t 3 /nobreak >nul
-            '''
-            echo "Фронтенд запущен на http://localhost:4173"
-        }
+    steps {
+        bat '''
+            schtasks /create /tn "LibraryFrontend" /tr "C:\\deploy\\frontend\\run_frontend.bat" /sc once /st 23:59 /f
+            schtasks /run /tn "LibraryFrontend"
+        '''
+        echo "Фронтенд запущен на http://localhost:4173"
     }
+}
     }
 
     post {
