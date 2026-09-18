@@ -42,7 +42,7 @@ pipeline {
                 }
             }
         }
-      
+
         stage('Deploy') {
             steps {
                 script {
@@ -57,6 +57,7 @@ pipeline {
                         xcopy /E /I /Y "library" "${deployDir}\\library"
                         if exist "templates" xcopy /E /I /Y "templates" "${deployDir}\\templates"
                         if exist "media" xcopy /E /I /Y "media" "${deployDir}\\media"
+                        if exist "staticfiles" xcopy /E /I /Y "staticfiles" "${deployDir}\\staticfiles"
                         if exist "client\\dist" xcopy /E /I /Y "client\\dist" "${deployDir}\\frontend"
                     """
                     echo "Приложение развернуто в ${deployDir}"
@@ -64,15 +65,30 @@ pipeline {
             }
         }
 
-        stage('Run') {
+        stage('Run Backend') {
             steps {
                 script {
                     def deployDir = "C:\\deploy\\library-app"
                     bat """
+                        taskkill /F /IM python.exe /FI "WINDOWTITLE eq LibraryApp*" 2>nul
+                        timeout /t 2 /nobreak >nul
                         cd /d "${deployDir}"
-                        start "LibraryApp" cmd /c "python manage.py runserver 0.0.0.0:8000"
+                        start "LibraryApp" cmd /c "python manage.py runserver 0.0.0.0:8000 > backend.log 2>&1"
                     """
-                    echo "Приложение запущено на http://localhost:8000"
+                    echo "Бэкенд запущен на http://localhost:8000"
+                }
+            }
+        }
+
+        stage('Run Frontend') {
+            steps {
+                script {
+                    def deployDir = "C:\\deploy\\library-app"
+                    bat """
+                        cd /d "${deployDir}\\frontend"
+                        start "LibraryFrontend" cmd /c "python -m http.server 4173"
+                    """
+                    echo "Фронтенд запущен на http://localhost:4173"
                 }
             }
         }
