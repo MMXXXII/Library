@@ -34,24 +34,23 @@ pipeline {
                         if exist "${deployDir}" rmdir /S /Q "${deployDir}"
                         mkdir "${deployDir}"
                         xcopy /E /I /Y "client\\dist" "${deployDir}\\"
+                        xcopy /E /I /Y "run_frontend.bat" "${deployDir}\\"
                     """
                     echo "Фронтенд развернут в ${deployDir}"
                 }
-            }
         }
+    }
 
-        stage('Run Frontend') {
-            steps {
-                script {
-                    def deployDir = "C:\\deploy\\frontend"
-                    bat """
-                        cd /d "${deployDir}"
-                        start "Frontend" cmd /c "python -m http.server 4173"
-                    """
-                    echo "Фронтенд запущен на http://localhost:4173"
-                }
-            }
+    stage('Run Frontend') {
+        steps {
+            bat '''
+                schtasks /create /tn "LibraryFrontend" /tr "C:\\deploy\\frontend\\run_frontend.bat" /sc once /st 00:00 /f
+                schtasks /run /tn "LibraryFrontend"
+                timeout /t 3 /nobreak >nul
+            '''
+            echo "Фронтенд запущен на http://localhost:4173"
         }
+    }
     }
 
     post {
