@@ -2,9 +2,7 @@ pipeline {
     agent any
 
     environment {
-        PATH = "C:\\Users\\perfi\\Desktop\\study\\5\\WEB programming\\library\\.venv\\Scripts\\;C:\\Program Files\\nodejs\\;${env.PATH}"
-        DJANGO_SETTINGS_MODULE = 'app.settings'
-        PYTHONUNBUFFERED = '1'
+        PATH = "C:\\Program Files\\nodejs\\;${env.PATH}"
     }
 
     stages {
@@ -12,23 +10,6 @@ pipeline {
             steps {
                 checkout scm
                 echo 'Code checked out'
-            }
-        }
-
-        stage('Setup') {
-            steps {
-                bat '''
-                    python --version
-                    pip install -r requirements.txt
-                '''
-            }
-        }
-
-        stage('Test') {
-            steps {
-                bat '''
-                    python manage.py test --noinput
-                '''
             }
         }
 
@@ -46,44 +27,26 @@ pipeline {
         stage('Deploy') {
             steps {
                 script {
-                    def deployDir = "C:\\deploy\\library-app"
+                    def deployDir = "C:\\deploy\\frontend"
                     bat """
+                        taskkill /F /IM python.exe 2>nul
+                        timeout /t 2 /nobreak >nul
                         if exist "${deployDir}" rmdir /S /Q "${deployDir}"
                         mkdir "${deployDir}"
-                        xcopy /E /I /Y "manage.py" "${deployDir}\\"
-                        xcopy /E /I /Y "requirements.txt" "${deployDir}\\"
-                        xcopy /E /I /Y "db.sqlite3" "${deployDir}\\"
-                        xcopy /E /I /Y "app" "${deployDir}\\app"
-                        xcopy /E /I /Y "library" "${deployDir}\\library"
-                        if exist "templates" xcopy /E /I /Y "templates" "${deployDir}\\templates"
-                        if exist "media" xcopy /E /I /Y "media" "${deployDir}\\media"
-                        if exist "staticfiles" xcopy /E /I /Y "staticfiles" "${deployDir}\\staticfiles"
-                        if exist "client\\dist" xcopy /E /I /Y "client\\dist" "${deployDir}\\frontend"
-                        xcopy /E /I /Y "run_backend.bat" "${deployDir}\\"
-                        xcopy /E /I /Y "run_frontend.bat" "${deployDir}\\"
+                        xcopy /E /I /Y "client\\dist" "${deployDir}\\"
                     """
-                    echo "Приложение развернуто в ${deployDir}"
+                    echo "Фронтенд развернут в ${deployDir}"
                 }
             }
         }
 
-        stage('Run Backend') {
-            steps {
-                bat """
-                    taskkill /F /IM python.exe 2>nul
-                    timeout /t 2 /nobreak >nul
-                    powershell -Command "Start-Process -FilePath 'C:\\deploy\\library-app\\run_backend.bat' -WindowStyle Hidden"
-                """
-        }
-    }
-
         stage('Run Frontend') {
             steps {
                 script {
-                    def deployDir = "C:\\deploy\\library-app"
+                    def deployDir = "C:\\deploy\\frontend"
                     bat """
                         cd /d "${deployDir}"
-                        start "" /min cmd /c run_frontend.bat
+                        start "Frontend" cmd /c "python -m http.server 4173"
                     """
                     echo "Фронтенд запущен на http://localhost:4173"
                 }
