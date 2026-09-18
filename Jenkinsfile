@@ -30,26 +30,29 @@ pipeline {
                     def deployDir = "C:\\deploy\\frontend"
                     bat """
                         taskkill /F /IM python.exe 2>nul
+                        taskkill /F /IM pythonw.exe 2>nul
+                        timeout /t 3 /nobreak >nul
+                        if exist "${deployDir}" rmdir /S /Q "${deployDir}"
                         timeout /t 2 /nobreak >nul
                         if exist "${deployDir}" rmdir /S /Q "${deployDir}"
                         mkdir "${deployDir}"
                         xcopy /E /I /Y "client\\dist" "${deployDir}\\"
-                        xcopy /E /I /Y "run_frontend.bat" "${deployDir}\\"
                     """
                     echo "Фронтенд развернут в ${deployDir}"
                 }
+            }
         }
-    }
 
-    stage('Run Frontend') {
-    steps {
-        bat '''
-            schtasks /create /tn "LibraryFrontend" /tr "C:\\deploy\\frontend\\run_frontend.bat" /sc once /st 23:59 /f
-            schtasks /run /tn "LibraryFrontend"
-        '''
-        echo "Фронтенд запущен на http://localhost:4173"
-    }
-}
+        stage('Run Frontend') {
+            steps {
+                script {
+                    bat '''
+                        powershell -Command "Start-Process -FilePath 'python.exe' -ArgumentList '-m','http.server','4173' -WorkingDirectory 'C:\\deploy\\frontend' -WindowStyle Hidden"
+                    '''
+                    echo "Фронтенд запущен на http://localhost:4173"
+                }
+            }
+        }
     }
 
     post {
