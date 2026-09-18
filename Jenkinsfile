@@ -59,6 +59,8 @@ pipeline {
                         if exist "media" xcopy /E /I /Y "media" "${deployDir}\\media"
                         if exist "staticfiles" xcopy /E /I /Y "staticfiles" "${deployDir}\\staticfiles"
                         if exist "client\\dist" xcopy /E /I /Y "client\\dist" "${deployDir}\\frontend"
+                        xcopy /E /I /Y "run_backend.bat" "${deployDir}\\"
+                        xcopy /E /I /Y "run_frontend.bat" "${deployDir}\\"
                     """
                     echo "Приложение развернуто в ${deployDir}"
                 }
@@ -73,7 +75,7 @@ pipeline {
                         taskkill /F /IM python.exe /FI "WINDOWTITLE eq LibraryApp*" 2>nul
                         timeout /t 2 /nobreak >nul
                         cd /d "${deployDir}"
-                        start "LibraryApp" cmd /c "python manage.py runserver 0.0.0.0:8000 > backend.log 2>&1"
+                        wmic process call create "cmd /c start \\"LibraryApp\\" /min run_backend.bat"
                     """
                     echo "Бэкенд запущен на http://localhost:8000"
                 }
@@ -85,8 +87,8 @@ pipeline {
                 script {
                     def deployDir = "C:\\deploy\\library-app"
                     bat """
-                        cd /d "${deployDir}\\frontend"
-                        start "LibraryFrontend" cmd /c "python -m http.server 4173"
+                        cd /d "${deployDir}"
+                        wmic process call create "cmd /c start \\"LibraryFrontend\\" /min run_frontend.bat"
                     """
                     echo "Фронтенд запущен на http://localhost:4173"
                 }
