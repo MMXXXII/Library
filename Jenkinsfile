@@ -32,6 +32,14 @@ pipeline {
             }
         }
 
+        stage('Collect Static') {
+            steps {
+                bat '''
+                    python manage.py collectstatic --noinput
+                '''
+            }
+        }
+
         stage('Build Frontend') {
             steps {
                 dir('client') {
@@ -57,6 +65,7 @@ pipeline {
                         xcopy /E /I /Y "library" "${deployDir}\\library"
                         if exist "templates" xcopy /E /I /Y "templates" "${deployDir}\\templates"
                         if exist "media" xcopy /E /I /Y "media" "${deployDir}\\media"
+                        if exist "staticfiles" xcopy /E /I /Y "staticfiles" "${deployDir}\\staticfiles"
                         if exist "client\\dist" xcopy /E /I /Y "client\\dist" "${deployDir}\\frontend"
                     """
                     echo "Приложение развернуто в ${deployDir}"
@@ -79,18 +88,15 @@ pipeline {
             }
         }
 
-        stage('Run Frontend') {
+        stage('Start Nginx') {
             steps {
-                script {
-                    def deployDir = "C:\\deploy\\library-app"
-                    bat """
-                        taskkill /F /IM python.exe /FI "WINDOWTITLE eq LibraryFrontend*" 2>nul
-                        timeout /t 2 /nobreak >nul
-                        cd /d "${deployDir}\\frontend"
-                        start "LibraryFrontend" cmd /c "python -m http.server 4173"
-                    """
-                    echo "Фронтенд запущен на http://localhost:4173"
-                }
+                bat '''
+                    taskkill /F /IM nginx.exe 2>nul
+                    timeout /t 2 /nobreak >nul
+                    cd /d C:\\Users\\perfi\\Downloads\\nginx-1.28.3
+                    start nginx
+                '''
+                echo "Nginx запущен на http://localhost"
             }
         }
     }
