@@ -67,28 +67,31 @@ pipeline {
             }
         }
 
-    stage('Run Backend') {
-        steps {
-            script {
-                def deployDir = "C:\\deploy\\library-app"
-                bat """
-                    taskkill /F /IM python.exe /FI "WINDOWTITLE eq LibraryApp*" 2>nul
-                    timeout /t 2 /nobreak >nul
-                    powershell -Command "Start-Process -FilePath 'cmd.exe' -ArgumentList '/c cd /d ${deployDir} && python manage.py runserver 0.0.0.0:8000 > backend.log 2>&1' -WindowStyle Minimized"
-                """
-                echo "Бэкенд запущен на http://localhost:8000"
+        stage('Run Backend') {
+            steps {
+                script {
+                    def deployDir = "C:\\deploy\\library-app"
+                    bat """
+                        taskkill /F /IM python.exe /FI "WINDOWTITLE eq LibraryApp*" 2>nul
+                        timeout /t 2 /nobreak >nul
+                        cd /d "${deployDir}"
+                        start "" /min cmd /c run_backend.bat
+                    """
+                    echo "Бэкенд запущен на http://localhost:8000"
+                }
             }
         }
-    }
 
-    stage('Run Frontend') {
-        steps {
-            script {
-                def deployDir = "C:\\deploy\\library-app"
-                bat """
-                    powershell -Command "Start-Process -FilePath 'cmd.exe' -ArgumentList '/c cd /d ${deployDir}\\frontend && python -m http.server 4173 > ..\\frontend.log 2>&1' -WindowStyle Minimized"
-                """
-                echo "Фронтенд запущен на http://localhost:4173"
+        stage('Run Frontend') {
+            steps {
+                script {
+                    def deployDir = "C:\\deploy\\library-app"
+                    bat """
+                        cd /d "${deployDir}"
+                        start "" /min cmd /c run_frontend.bat
+                    """
+                    echo "Фронтенд запущен на http://localhost:4173"
+                }
             }
         }
     }
