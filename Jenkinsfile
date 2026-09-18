@@ -43,6 +43,19 @@ pipeline {
             }
         }
 
+        stage('Run Frontend') {
+            steps {
+                script {
+                    def deployDir = "C:\\deploy\\library-app"
+                    bat """
+                        cd /d "${deployDir}\\frontend"
+                        start "LibraryFrontend" cmd /c "npx vite preview --host 0.0.0.0 --port 4173"
+                    """
+                    echo "Фронтенд запущен на http://localhost:4173"
+                }
+            }
+        }
+
         stage('Deploy') {
             steps {
                 script {

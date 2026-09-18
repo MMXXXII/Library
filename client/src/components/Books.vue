@@ -121,7 +121,7 @@ onMounted(async () => {
       </div>
       <div class="col-auto d-flex gap-2">
         <button v-if="userStore.isSuperUser" class="btn btn-primary" @click="openAddModal">Добавить книгу</button>
-        <button class="btn btn-outline-success" @click="exportFile">Экспорт Excel</button>
+        <button class="btn btn-warning" @click="exportFile">Экспорт Excel</button>
       </div>
     </div>
 
