@@ -69,18 +69,13 @@ pipeline {
 
         stage('Run Backend') {
             steps {
-                script {
-                    def deployDir = "C:\\deploy\\library-app"
-                    bat """
-                        taskkill /F /IM python.exe /FI "WINDOWTITLE eq LibraryApp*" 2>nul
-                        timeout /t 2 /nobreak >nul
-                        cd /d "${deployDir}"
-                        start "" /min cmd /c run_backend.bat
-                    """
-                    echo "Бэкенд запущен на http://localhost:8000"
-                }
-            }
+                bat """
+                    taskkill /F /IM python.exe 2>nul
+                    timeout /t 2 /nobreak >nul
+                    powershell -Command "Start-Process -FilePath 'C:\\deploy\\library-app\\run_backend.bat' -WindowStyle Hidden"
+                """
         }
+    }
 
         stage('Run Frontend') {
             steps {
