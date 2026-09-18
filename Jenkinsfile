@@ -46,9 +46,10 @@ pipeline {
         stage('Run Frontend') {
             steps {
                 script {
-                    bat '''
-                        powershell -Command "Start-Process -FilePath 'python.exe' -ArgumentList '-m','http.server','4173' -WorkingDirectory 'C:\\deploy\\frontend' -WindowStyle Hidden"
-                    '''
+                    def pythonPath = "C:\\\\Users\\\\perfi\\\\Desktop\\\\study\\\\5\\\\WEB programming\\\\library\\\\.venv\\\\Scripts\\\\python.exe"
+                    bat """
+                        powershell -Command "Start-Process -FilePath '${pythonPath}' -ArgumentList '-m','http.server','4173' -WorkingDirectory 'C:\\\\deploy\\\\frontend' -WindowStyle Hidden"
+                    """
                     echo "Фронтенд запущен на http://localhost:4173"
                 }
             }
