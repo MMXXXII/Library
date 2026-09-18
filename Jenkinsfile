@@ -43,19 +43,6 @@ pipeline {
             }
         }
 
-        stage('Run Frontend') {
-            steps {
-                script {
-                    def deployDir = "C:\\deploy\\library-app"
-                    bat """
-                        cd /d "${deployDir}\\frontend"
-                        start "LibraryFrontend" cmd /c "npx vite preview --host 0.0.0.0 --port 4173"
-                    """
-                    echo "Фронтенд запущен на http://localhost:4173"
-                }
-            }
-        }
-
         stage('Deploy') {
             steps {
                 script {
@@ -77,15 +64,32 @@ pipeline {
             }
         }
 
-        stage('Run') {
+        stage('Run Backend') {
             steps {
                 script {
                     def deployDir = "C:\\deploy\\library-app"
                     bat """
+                        taskkill /F /IM python.exe /FI "WINDOWTITLE eq LibraryApp*" 2>nul
+                        timeout /t 2 /nobreak >nul
                         cd /d "${deployDir}"
                         start "LibraryApp" cmd /c "python manage.py runserver 0.0.0.0:8000"
                     """
-                    echo "Приложение запущено на http://localhost:8000"
+                    echo "Бэкенд запущен на http://localhost:8000"
+                }
+            }
+        }
+
+        stage('Run Frontend') {
+            steps {
+                script {
+                    def deployDir = "C:\\deploy\\library-app"
+                    bat """
+                        taskkill /F /IM python.exe /FI "WINDOWTITLE eq LibraryFrontend*" 2>nul
+                        timeout /t 2 /nobreak >nul
+                        cd /d "${deployDir}\\frontend"
+                        start "LibraryFrontend" cmd /c "python -m http.server 4173"
+                    """
+                    echo "Фронтенд запущен на http://localhost:4173"
                 }
             }
         }
